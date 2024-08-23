@@ -1,0 +1,31 @@
+.wrapper {
+ display: flex;
+ justify-content: center;
+ align-items: center;
+ height: 100vh;
+ width: 100vh;
+ margin: auto;
+ 
+}
+.accordin {
+    width: 500px;
+    
+}
+
+.items {
+    background: goldenrod;
+    margin-bottom: 10px;
+    padding: 10px 20px;
+    border-radius: 12px;
+}
+.title {
+    color: aliceblue;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+}
+.content {
+    color: aliceblue;
+    height: auto;
+}
