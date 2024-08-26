@@ -75,7 +75,7 @@ function ImageSlider({ url, limit = 5, page = 1 }) {
               className={
                 currentSlide === index
                   ? "current-indicator"
-                  : "current-indicator hide-current-indicator "
+                  : "current-indicator inactive-indicator "
               }
             ></button>
           ))}
