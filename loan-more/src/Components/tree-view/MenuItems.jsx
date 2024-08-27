@@ -13,12 +13,16 @@ function MenuItems({ item }) {
   }
 
   return (
-    <li>
+    <li className="menu">
       <div style={{ display: "flex", gap: "20px" }}>
         <p>{item.label}</p>
         {item && item.children && item.children.length ? (
           <span className="+" onClick={() => handleToggleChildern(item.label)}>
-            {displayChilden[item.label] ? <FaMinus /> : <FaPlus />}
+            {displayChilden[item.label] ? (
+              <FaMinus size={25} />
+            ) : (
+              <FaPlus size={25} />
+            )}
           </span>
         ) : null}
       </div>

@@ -1,9 +1,8 @@
-import React from "react";
 import MenuList from "./MenuList";
-
+import "./styles.css";
 function TreeView({ menus = [] }) {
   return (
-    <div className="tree-view-container">
+    <div className="menu-list-container">
       <MenuList list={menus} />
     </div>
   );
