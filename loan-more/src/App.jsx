@@ -1,10 +1,13 @@
 import "./App.css";
-import LoadMoreData from "./Components";
+// import LoadMoreData from "./Components";
+import menus from "./Components/tree-view/data";
+import TreeView from "./Components/tree-view";
 
 function App() {
   return (
     <>
-      <LoadMoreData />
+      {/* <LoadMoreData /> */}
+      <TreeView menus={menus} />
     </>
   );
 }
