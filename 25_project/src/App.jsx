@@ -1,5 +1,6 @@
 import "./App.css";
-import ModelTest from "./Components/custom-model-popup/model-text";
+import GithubProfileFinder from "./Components/github-profilr-finder";
+// import ModelTest from "./Components/custom-model-popup/model-text";
 // import TabTest from "./Components/custom-tab/tab-test";
 // import Accordian from "./Components/accordian";
 // import LigtDarkMode from "./Components/light-dark-mode";
@@ -19,7 +20,8 @@ function App() {
       {/* <LigtDarkMode /> */}
       {/* <ScrollIndecator url={"https://dummyjson.com/products?limit=100"} /> */}
       {/* <TabTest /> */}
-      <ModelTest />
+      {/* <ModelTest /> */}
+      <GithubProfileFinder />
     </>
   );
 }
