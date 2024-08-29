@@ -1,5 +1,6 @@
 import "./App.css";
-import TabTest from "./Components/custom-tab/tab-test";
+import ModelTest from "./Components/custom-model-popup/model-text";
+// import TabTest from "./Components/custom-tab/tab-test";
 // import Accordian from "./Components/accordian";
 // import LigtDarkMode from "./Components/light-dark-mode";
 // import QRCodeGenerator from "./Components/qr-code-generator";
@@ -17,7 +18,8 @@ function App() {
       {/* <QRCodeGenerator /> */}
       {/* <LigtDarkMode /> */}
       {/* <ScrollIndecator url={"https://dummyjson.com/products?limit=100"} /> */}
-      <TabTest />
+      {/* <TabTest /> */}
+      <ModelTest />
     </>
   );
 }

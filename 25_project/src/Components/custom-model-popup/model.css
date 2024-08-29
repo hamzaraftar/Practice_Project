@@ -1,0 +1,28 @@
+.model{
+    position: fixed;
+    z-index: 1;
+    padding-top: 150px;
+    left: 0;
+    right: 0;
+    width: 50%;
+    margin: auto;
+    
+    background-color: #39e72a;
+    
+}
+.model-content{
+    position: relative;
+    color: white;
+    margin: auto;
+    padding:0 ;
+    border: 1px solid red;
+    width: 80px;
+    
+}
+.colse-model-icon{
+    cursor: pointer;
+    font-size: 24px;
+    padding: 1px,20px;
+    background-color: blue;
+    border-radius: 20px;
+}
