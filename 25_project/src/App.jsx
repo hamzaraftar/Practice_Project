@@ -1,5 +1,6 @@
 import "./App.css";
-import GithubProfileFinder from "./Components/github-profilr-finder";
+import TicTacToe from "./Components/tic-tack-toe";
+// import GithubProfileFinder from "./Components/github-profilr-finder";
 // import ModelTest from "./Components/custom-model-popup/model-text";
 // import TabTest from "./Components/custom-tab/tab-test";
 // import Accordian from "./Components/accordian";
@@ -21,7 +22,8 @@ function App() {
       {/* <ScrollIndecator url={"https://dummyjson.com/products?limit=100"} /> */}
       {/* <TabTest /> */}
       {/* <ModelTest /> */}
-      <GithubProfileFinder />
+      {/* <GithubProfileFinder /> */}
+      <TicTacToe />
     </>
   );
 }
