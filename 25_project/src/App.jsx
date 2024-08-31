@@ -1,5 +1,5 @@
 import "./App.css";
-import TicTacToe from "./Components/tic-tack-toe";
+// import TicTacToe from "./Components/tic-tack-toe";
 // import GithubProfileFinder from "./Components/github-profilr-finder";
 // import ModelTest from "./Components/custom-model-popup/model-text";
 // import TabTest from "./Components/custom-tab/tab-test";
@@ -10,6 +10,7 @@ import TicTacToe from "./Components/tic-tack-toe";
 // import RandomColor from "./Components/random-color";
 // import ScrollIndecator from "./Components/scroll-indicator";
 // import StarRating from "./Components/start-rating";
+import UseFetchHooktest from "./Components/use-fetch";
 
 function App() {
   return (
@@ -23,7 +24,8 @@ function App() {
       {/* <TabTest /> */}
       {/* <ModelTest /> */}
       {/* <GithubProfileFinder /> */}
-      <TicTacToe />
+      {/* <TicTacToe /> */}
+      <UseFetchHooktest />
     </>
   );
 }
