@@ -1,5 +1,6 @@
 import "./App.css";
-import ScrollToTopAndBottem from "./Components/scroll-to-top-and-bottom";
+import ScrollToSection from "./Components/scroll-to-top-and-bottom/scroll-to-section";
+// import ScrollToTopAndBottem from "./Components/scroll-to-top-and-bottom";
 // import TicTacToe from "./Components/tic-tack-toe";
 // import GithubProfileFinder from "./Components/github-profilr-finder";
 // import ModelTest from "./Components/custom-model-popup/model-text";
@@ -27,7 +28,8 @@ function App() {
       {/* <GithubProfileFinder /> */}
       {/* <TicTacToe /> */}
       {/* <UseFetchHooktest /> */}
-      <ScrollToTopAndBottem />
+      {/* <ScrollToTopAndBottem /> */}
+      <ScrollToSection />
     </>
   );
 }
