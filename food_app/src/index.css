@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+/* HTML: <div class="loader"></div> */
+.loader {
+  position: relative;
+  top: 123px;
+  margin: auto;
+    height: 10px;
+    width: 500px;
+    --c:no-repeat linear-gradient(#6100ee 0 0);
+    background: var(--c),var(--c),#d7b8fc;
+    background-size: 60% 100%;
+    animation: l16 3s infinite;
+    border-radius: 13px;
+  }
+  @keyframes l16 {
+    0%   {background-position:-150% 0,-150% 0}
+    66%  {background-position: 250% 0,-150% 0}
+    100% {background-position: 250% 0, 250% 0}
+  }
+ 
+
+  .active {
+    
+    border-bottom: 3px solid gray;
+    border-radius: 2px;
+  }
