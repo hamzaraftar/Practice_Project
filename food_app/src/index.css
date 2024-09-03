@@ -23,6 +23,6 @@
 
   .active {
     
-    border-bottom: 3px solid gray;
+    border-bottom: 3px solid red;
     border-radius: 2px;
   }

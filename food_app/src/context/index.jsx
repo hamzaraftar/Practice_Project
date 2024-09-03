@@ -6,6 +6,7 @@ export default function GlobelState({ children }) {
   const [loading, setLoading] = useState(false);
   const [recipeList, setRecipeList] = useState([]);
   const [recipeDetailsData, setRecipeDetailsData] = useState("");
+  const [favoritesList, setFavoritesList] = useState([]);
   async function handleSubmit(e) {
     e.preventDefault();
     setLoading(true);
@@ -24,6 +25,19 @@ export default function GlobelState({ children }) {
       setSearchParam("");
     }
   }
+  function handleAddToFavorites(getCurrentItem) {
+    console.log(getCurrentItem);
+    let cpyFavorites = [...favoritesList];
+    const index = cpyFavorites.findIndex(
+      (item) => item.id === getCurrentItem.id
+    );
+    if (index === -1) {
+      cpyFavorites.push(getCurrentItem);
+    } else {
+      cpyFavorites.splice(index);
+    }
+    setFavoritesList(cpyFavorites);
+  }
   return (
     <GlobalContext.Provider
       value={{
@@ -34,6 +48,8 @@ export default function GlobelState({ children }) {
         recipeList,
         recipeDetailsData,
         setRecipeDetailsData,
+        handleAddToFavorites,
+        favoritesList,
       }}
     >
       {children}

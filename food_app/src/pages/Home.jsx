@@ -1,8 +1,11 @@
-import React, { useContext } from "react";
+import { useContext, useEffect } from "react";
 import { GlobalContext } from "../context";
 import RecipeItem from "../components/RecipeList";
 
 function Home() {
+  useEffect(() => {
+    document.title = "Home";
+  }, []);
   const { loading, recipeList } = useContext(GlobalContext);
   if (loading) return <div className="loader "></div>;
   return (

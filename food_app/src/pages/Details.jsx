@@ -3,8 +3,12 @@ import { useParams } from "react-router-dom";
 import { GlobalContext } from "../context";
 
 export default function Details() {
+  useEffect(() => {
+    document.title = "Details";
+  }, []);
   const { id } = useParams();
-  const { recipeDetailsData, setRecipeDetailsData } = useContext(GlobalContext);
+  const { recipeDetailsData, setRecipeDetailsData, handleAddToFavorites } =
+    useContext(GlobalContext);
 
   useEffect(() => {
     async function getRecipeDetails() {
@@ -40,9 +44,27 @@ export default function Details() {
           {recipeDetailsData?.recipe?.title}
         </h3>
         <div>
-          <button className="p-3 px-5 rounded-lg text-sm uppercase font-medium tracking-wide mt-3 inline-block shadow-sm bg-black text-white ">
+          <button
+            onClick={() => handleAddToFavorites(recipeDetailsData?.recipe)}
+            className="p-3 px-5 rounded-lg text-sm uppercase font-medium tracking-wide mt-3 inline-block shadow-sm bg-black text-white "
+          >
             Save as Favorites
           </button>
+        </div>
+        <div>
+          <span className="text-2xl font-semibold">Ingredients :</span>
+          <ul className="flex flex-col gap-3">
+            {recipeDetailsData?.recipe?.ingredients.map((ingredient) => (
+              <li>
+                <span className="text-xl font-semibold">
+                  {ingredient.quantity} {ingredient.unit}
+                </span>
+                <span className="text-xl font-semibold">
+                  {ingredient.description}
+                </span>
+              </li>
+            ))}
+          </ul>
         </div>
       </div>
     </div>
