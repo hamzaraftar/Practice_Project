@@ -5,8 +5,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-    const comment = await request.json()
-    console.log(comment);
+    const {text} = await request.json()
+    console.log(text);
     return  new Response("data is recive")
     
 }
