@@ -5,3 +5,7 @@ export async function GET(request:Request,{params}:{params:{id:string}}) {
     
     return new Response("get handler")
 }
+export async function DELETE(request:Request,{params}:{params:{id :string}}) {
+    
+    return new Response ("Delete data ")
+}
