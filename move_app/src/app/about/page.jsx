@@ -1,5 +1,8 @@
 import React from "react";
-
+export const metadata = {
+  title: "About",
+  description: "This is move database clone",
+};
 export default function page() {
   return (
     <div className="max-w-6xl mx-auto p-3 space-y-4">
