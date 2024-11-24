@@ -14,7 +14,7 @@ export default function Navbar() {
       <ul className="flex gap-10 items-center">
         {products_categories.map((x) => (
           <li key={x.label}>
-            <NavLink to={`/${x.value}`}>{x.value}</NavLink>
+            <NavLink to={`/${x.value}`}>{x.label}</NavLink>
           </li>
         ))}
       </ul>
