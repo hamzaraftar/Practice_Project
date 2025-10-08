@@ -3,10 +3,10 @@ import axios from "axios";
 
 function App() {
   const [messages, setMessages] = useState([
-    { text: "Hello! I'm  chatbot. How can I help you?", sender: "bot" },
+    { text: "Hello! I'm chatbot. How can I help you?", sender: "bot" },
   ]);
   const [input, setInput] = useState("");
-  console.log(messages);
+  const [isTyping, setIsTyping] = useState(false); // 👈 NEW
 
   const handleSend = async () => {
     if (input.trim() === "") return;
@@ -14,19 +14,23 @@ function App() {
     const newUserMessage = { text: input, sender: "user" };
     setMessages((prev) => [...prev, newUserMessage]);
     setInput("");
+    setIsTyping(true); // 👈 show typing animation
 
     try {
       const response = await axios.post("http://127.0.0.1:8000/api/chat/", {
         message: input,
       });
       console.log(response.data);
+
       setTimeout(() => {
+        setIsTyping(false); // 👈 hide typing animation
         const botMessage = { text: response.data.reply, sender: "bot" };
         setMessages((prev) => [...prev, botMessage]);
       }, 700);
     } catch (e) {
       console.error("Error communicating with the server:", e);
       setTimeout(() => {
+        setIsTyping(false);
         const errorMessage = {
           text: "⚠️ Sorry, I couldn’t connect to the server.",
           sender: "bot",
@@ -42,7 +46,7 @@ function App() {
 
   return (
     <div className="flex items-center justify-center h-screen bg-gray-100">
-      <div className="w-full max-w-md h-[600px] bg-white shadow-lg rounded-2xl flex flex-col overflow-hidden">
+      <div className="w-full max-w-md h-[600px] bg-white shadow-xl rounded-2xl flex flex-col overflow-hidden">
         <div className="bg-blue-600 text-white text-center py-3 text-lg font-semibold">
           Simple Chatbot
         </div>
@@ -60,6 +64,13 @@ function App() {
               {msg.text}
             </div>
           ))}
+
+          {/* 👇 Typing animation */}
+          {isTyping && (
+            <div className="bg-gray-200 text-gray-800 p-3 rounded-2xl inline-block animate-pulse">
+              <span className="dot-flash">Typing...</span>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center p-3 border-t">
@@ -69,7 +80,7 @@ function App() {
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={handleKeyPress}
             placeholder="Type your message..."
-            className="flex-1 bg-gray-100 p-3 px-2.5  rounded-xl outline-none"
+            className="flex-1 bg-gray-100 p-3 px-2.5 rounded-xl outline-none"
           />
           <button
             onClick={handleSend}
