@@ -20,6 +20,30 @@ function App() {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isTyping]);
 
+const typeText = (fullText, callback) => {
+  let index = 0;
+  const typingInterval = setInterval(() => {
+    setMessages((prev) => {
+      const updated = [...prev];
+      const lastMsg = updated[updated.length - 1];
+      if (lastMsg.sender === "bot") {
+        // Safely build the text character by character
+        updated[updated.length - 1] = {
+          ...lastMsg,
+          text: fullText.slice(0, index + 1),
+        };
+      }
+      return updated;
+    });
+
+    index++;
+    if (index >= fullText.length) {
+      clearInterval(typingInterval);
+      callback();
+    }
+  }, 30); // speed (ms per character)
+};
+
   const handleSend = async (regenerate = false) => {
     const messageToSend = regenerate ? lastUserMessage : input.trim();
     if (messageToSend === "") return;
@@ -42,26 +66,25 @@ function App() {
         message: messageToSend,
       });
 
-      setTimeout(() => {
-        const botMessage = {
-          text: response.data.reply,
-          sender: "bot",
-          time: new Date().toLocaleTimeString(),
-        };
-        setMessages((prev) => [...prev, botMessage]);
+      const botMessage = {
+        text: "",
+        sender: "bot",
+        time: new Date().toLocaleTimeString(),
+      };
+      setMessages((prev) => [...prev, botMessage]);
+
+      typeText(response.data.reply, () => {
         setIsTyping(false);
-      }, 1000);
+      });
     } catch (error) {
       console.error("Error communicating with server:", error);
-      setTimeout(() => {
-        const errorMessage = {
-          text: "⚠️ Sorry, I couldn’t connect to the server.",
-          sender: "bot",
-          time: new Date().toLocaleTimeString(),
-        };
-        setMessages((prev) => [...prev, errorMessage]);
-        setIsTyping(false);
-      }, 800);
+      const errorMessage = {
+        text: "⚠️ Sorry, I couldn’t connect to the server.",
+        sender: "bot",
+        time: new Date().toLocaleTimeString(),
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+      setIsTyping(false);
     }
   };
 
@@ -88,9 +111,7 @@ function App() {
             darkMode ? "bg-gray-700" : "bg-blue-600 text-white"
           }`}
         >
-          <h1 className="text-lg font-semibold flex items-center gap-2">
-            AI Chat Assistant
-          </h1>
+          <h1 className="text-lg font-semibold">AI Chat Assistant</h1>
 
           <div className="flex items-center gap-3">
             <button
@@ -147,11 +168,11 @@ function App() {
           {isTyping && (
             <div className="flex justify-start">
               <div
-                className={`px-3 py-2 rounded-2xl rounded-bl-none text-sm shadow-sm ${
+                className={`px-3 py-2 rounded-2xl text-sm shadow-sm ${
                   darkMode ? "bg-gray-700" : "bg-gray-200"
                 }`}
               >
-                <span className="animate-pulse"> Typing...</span>
+                <span className="animate-pulse">Typing...</span>
               </div>
             </div>
           )}
