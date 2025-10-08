@@ -26,7 +26,7 @@ function App() {
         setIsTyping(false); // 👈 hide typing animation
         const botMessage = { text: response.data.reply, sender: "bot" };
         setMessages((prev) => [...prev, botMessage]);
-      }, 700);
+      }, 500);
     } catch (e) {
       console.error("Error communicating with the server:", e);
       setTimeout(() => {
@@ -36,7 +36,7 @@ function App() {
           sender: "bot",
         };
         setMessages((prev) => [...prev, errorMessage]);
-      }, 700);
+      }, 500);
     }
   };
 
