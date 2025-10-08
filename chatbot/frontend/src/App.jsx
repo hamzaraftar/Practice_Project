@@ -134,7 +134,7 @@ const typeText = (fullText, callback) => {
                   : "bg-gray-200 text-gray-800"
               }`}
             >
-              {darkMode ? "🌙" : "🌞"}
+              {darkMode ? "🌞" : "🌙"}
             </button>
           </div>
         </div>
