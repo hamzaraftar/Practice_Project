@@ -95,7 +95,11 @@ function App() {
               ...c,
               messages: [
                 ...c.messages,
-                { sender: "bot", text: "", time: new Date().toLocaleTimeString() },
+                {
+                  sender: "bot",
+                  text: "",
+                  time: new Date().toLocaleTimeString(),
+                },
               ],
             }
           : c
@@ -125,7 +129,11 @@ function App() {
     const text = input.trim();
     if (!text || !selectedChat) return;
 
-    const userMsg = { sender: "user", text, time: new Date().toLocaleTimeString() };
+    const userMsg = {
+      sender: "user",
+      text,
+      time: new Date().toLocaleTimeString(),
+    };
     setChats((prev) =>
       prev.map((c) =>
         c.id === selectedChat.id
@@ -137,7 +145,9 @@ function App() {
     setIsTyping(true);
 
     try {
-      const response = await axios.post("http://127.0.0.1:8000/api/chat/", { message: text });
+      const response = await axios.post("http://127.0.0.1:8000/api/chat/", {
+        message: text,
+      });
       const replyText = extractReplyText(response);
       typeBotText(selectedChat.id, String(replyText));
     } catch (err) {
@@ -149,7 +159,11 @@ function App() {
                 ...c,
                 messages: [
                   ...c.messages,
-                  { sender: "bot", text: errText, time: new Date().toLocaleTimeString() },
+                  {
+                    sender: "bot",
+                    text: errText,
+                    time: new Date().toLocaleTimeString(),
+                  },
                 ],
               }
             : c
@@ -162,9 +176,7 @@ function App() {
   const clearSelectedChat = () => {
     if (!selectedChat) return;
     setChats((prev) =>
-      prev.map((c) =>
-        c.id === selectedChat.id ? { ...c, messages: [] } : c
-      )
+      prev.map((c) => (c.id === selectedChat.id ? { ...c, messages: [] } : c))
     );
   };
 
@@ -195,9 +207,7 @@ function App() {
               key={c.id}
               onClick={() => setSelectedId(c.id)}
               className={`p-3 rounded-lg mb-2 cursor-pointer transition ${
-                c.id === selectedId
-                  ? "bg-white/30"
-                  : "hover:bg-white/20"
+                c.id === selectedId ? "bg-white/30" : "hover:bg-white/20"
               }`}
             >
               <div className="flex justify-between items-center">
@@ -244,7 +254,9 @@ function App() {
               </button>
             </div>
           ) : (
-            <div className="text-center text-xs opacity-70 py-2 cursor-pointer">⚙️</div>
+            <div className="text-center text-xs opacity-70 py-2 cursor-pointer">
+              ⚙️
+            </div>
           )}
         </div>
       </div>
@@ -253,7 +265,9 @@ function App() {
       <div className="flex-1 flex flex-col">
         <div className="px-6 py-4 bg-purple-600 text-white shadow-md flex justify-between items-center">
           <h1 className="font-bold text-lg">AI Chat Bot</h1>
-          <span className="opacity-100 font-bold text-sm text-white">{selectedChat?.title}</span>
+          <span className="opacity-100 font-bold text-sm text-white">
+            {selectedChat?.title}
+          </span>
         </div>
 
         <div className="flex-1 overflow-auto p-6">
