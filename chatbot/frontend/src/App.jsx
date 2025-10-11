@@ -181,20 +181,20 @@ function App() {
   };
 
   return (
-    <div className="h-screen w-screen flex bg-gradient-to-br from-indigo-50 via-purple-100 to-pink-100 text-gray-900">
+    <div className="h-screen w-screen flex bg-[#343541] text-gray-100">
       {/* Sidebar */}
       <div
         className={`transition-all duration-300 ${
           sidebarOpen ? "w-72" : "w-16"
-        } bg-gradient-to-b from-indigo-600 to-purple-700 text-white flex flex-col shadow-2xl`}
+        } bg-[#202123] text-white flex flex-col border-r border-gray-700`}
       >
-        <div className="flex items-center justify-between px-4 py-3 border-b border-white/20">
-          <h2 className={`font-bold text-lg ${!sidebarOpen && "hidden"}`}>
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
+          <h2 className={`font-semibold text-lg ${!sidebarOpen && "hidden"}`}>
             💬 Chats
           </h2>
           <button
             onClick={() => setSidebarOpen((s) => !s)}
-            className="bg-white/20 hover:bg-white/30 p-2 rounded transition cursor-pointer"
+            className="bg-gray-700 hover:bg-gray-600 p-2 rounded transition cursor-pointer"
           >
             {sidebarOpen ? "❌" : "☰"}
           </button>
@@ -207,7 +207,9 @@ function App() {
               key={c.id}
               onClick={() => setSelectedId(c.id)}
               className={`p-3 rounded-lg mb-2 cursor-pointer transition ${
-                c.id === selectedId ? "bg-white/30" : "hover:bg-white/20"
+                c.id === selectedId
+                  ? "bg-emerald-600/40"
+                  : "hover:bg-gray-700/50"
               }`}
             >
               <div className="flex justify-between items-center">
@@ -218,9 +220,9 @@ function App() {
                       e.stopPropagation();
                       deleteChat(c.id);
                     }}
-                    className="text-xs bg-red-500 px-2 py-0.5 rounded hover:bg-red-600 cursor-pointer"
+                    className="text-xs bg-red-600 px-2 py-0.5 rounded hover:bg-red-700 cursor-pointer"
                   >
-                    Delete
+                    ✖
                   </button>
                 )}
               </div>
@@ -228,27 +230,27 @@ function App() {
           ))}
         </div>
 
-        <div className="p-3 border-t border-white/20">
+        <div className="p-3 border-t border-gray-700">
           {sidebarOpen ? (
             <div className="flex flex-col gap-2">
               <button
                 onClick={createNewChat}
-                className="bg-purple-600 py-2 rounded font-semibold hover:opacity-90 cursor-pointer"
+                className="bg-emerald-600 py-2 rounded font-semibold hover:bg-emerald-500 cursor-pointer"
               >
                 + New Chat
               </button>
               <button
                 onClick={clearSelectedChat}
-                className="bg-white/20 py-2 rounded hover:bg-white/30 cursor-pointer"
+                className="bg-gray-700 py-2 rounded hover:bg-gray-600 cursor-pointer"
               >
-                Clear
+                Clear Chat
               </button>
               <button
                 onClick={() => {
                   localStorage.removeItem("chat_sessions_v1");
                   setChats([]);
                 }}
-                className="bg-red-500 py-2 rounded hover:bg-red-600 cursor-pointer"
+                className="bg-red-600 py-2 rounded hover:bg-red-700 cursor-pointer"
               >
                 Reset All
               </button>
@@ -263,14 +265,14 @@ function App() {
 
       {/* Chat Area */}
       <div className="flex-1 flex flex-col">
-        <div className="px-6 py-4 bg-purple-600 text-white shadow-md flex justify-between items-center">
+        <div className="px-6 py-4 bg-[#202123] text-white flex justify-between items-center shadow">
           <h1 className="font-bold text-lg">AI Chat Bot</h1>
-          <span className="opacity-100 font-bold text-sm text-white">
+          <span className="opacity-80 font-semibold text-sm">
             {selectedChat?.title}
           </span>
         </div>
 
-        <div className="flex-1 overflow-auto p-6">
+        <div className="flex-1 overflow-auto p-6 bg-[#343541]">
           <div className="max-w-3xl mx-auto flex flex-col gap-4">
             {selectedChat?.messages?.length ? (
               selectedChat.messages.map((m, idx) => (
@@ -278,8 +280,8 @@ function App() {
                   key={idx}
                   className={`p-3 rounded-2xl max-w-[75%] shadow transition ${
                     m.sender === "user"
-                      ? "self-end bg-purple-600 text-white"
-                      : "self-start bg-white border border-gray-200"
+                      ? "self-end bg-emerald-600 text-white"
+                      : "self-start bg-[#40414f] text-gray-100"
                   }`}
                 >
                   <div style={{ whiteSpace: "pre-wrap" }}>{m.text}</div>
@@ -289,12 +291,12 @@ function App() {
                 </div>
               ))
             ) : (
-              <div className="text-center text-gray-500 p-8 bg-white rounded shadow">
+              <div className="text-center text-gray-400 p-8 bg-[#40414f] rounded shadow">
                 No messages yet — start chatting!
               </div>
             )}
             {isTyping && (
-              <div className="self-start bg-white border p-3 rounded-2xl max-w-[40%] shadow">
+              <div className="self-start bg-[#40414f] p-3 rounded-2xl max-w-[40%] shadow">
                 <div className="flex gap-2">
                   <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
                   <span
@@ -313,18 +315,18 @@ function App() {
         </div>
 
         {/* Input */}
-        <div className="p-4 bg-white border-t shadow-inner">
+        <div className="p-4 bg-[#202123] border-t border-gray-700">
           <div className="max-w-3xl mx-auto flex gap-2">
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSend()}
               placeholder="Type your message..."
-              className="flex-1 border rounded-full px-4 py-2 focus:outline-none focus:ring-2 focus:purple-600 transition"
+              className="flex-1 bg-[#40414f] border border-gray-600 rounded-full px-4 py-2 text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
             />
             <button
               onClick={handleSend}
-              className="bg-gradient-to-r cursor-pointer bg-purple-600 text-white px-6 py-2 rounded-full shadow hover:opacity-90"
+              className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2 rounded-full shadow cursor-pointer"
             >
               Send
             </button>
