@@ -6,7 +6,9 @@ function App() {
     try {
       const saved = localStorage.getItem("chat_sessions_v1");
       if (saved) return JSON.parse(saved);
-    } catch (e) {}
+    } catch (e) {
+      console.error("Failed to load chats from localStorage:", e);
+    }
     return [
       {
         id: "main",
@@ -31,7 +33,9 @@ function App() {
   useEffect(() => {
     try {
       localStorage.setItem("chat_sessions_v1", JSON.stringify(chats));
-    } catch (e) {}
+    } catch (e) {
+      console.error("Failed to save chats to localStorage:",e)
+    }
   }, [chats]);
 
   const selectedChat = chats.find((c) => c.id === selectedId) || chats[0];
@@ -151,6 +155,7 @@ function App() {
       const replyText = extractReplyText(response);
       typeBotText(selectedChat.id, String(replyText));
     } catch (err) {
+      console.error(err)
       const errText = "⚠️ Sorry — couldn't connect to the server.";
       setChats((prev) =>
         prev.map((c) =>
