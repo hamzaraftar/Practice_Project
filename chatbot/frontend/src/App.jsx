@@ -200,21 +200,23 @@ function App() {
           </button>
         </div>
 
-        {/* Chat list */}
+        {/* ✅ Fixed Chat List Section */}
         <div className="flex-1 overflow-auto p-2">
-          {chats.map((c) => (
+          {chats.map((c, index) => (
             <div
               key={c.id}
               onClick={() => setSelectedId(c.id)}
-              className={`p-3 rounded-lg mb-2 cursor-pointer transition ${
+              className={`p-3 rounded-lg mb-2 cursor-pointer transition flex items-center justify-between ${
                 c.id === selectedId
-                  ? "bg-emerald-600/40"
-                  : "hover:bg-gray-700/50"
+                  ? "bg-emerald-600/40 border border-emerald-500/50"
+                  : "hover:bg-gray-700/40"
               }`}
             >
-              <div className="flex justify-between items-center">
-                <span className="truncate text-sm font-medium">{c.title}</span>
-                {sidebarOpen && (
+              {sidebarOpen ? (
+                <>
+                  <span className="truncate text-sm font-medium">
+                    {c.title}
+                  </span>
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -224,8 +226,19 @@ function App() {
                   >
                     ✖
                   </button>
-                )}
-              </div>
+                </>
+              ) : (
+                <div
+                  title={c.title}
+                  className={`w-8 h-8 rounded-md flex items-center justify-center text-sm font-bold ${
+                    c.id === selectedId
+                      ? "bg-emerald-600 text-white"
+                      : "bg-gray-700"
+                  }`}
+                >
+                  {index + 1}
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -244,15 +257,6 @@ function App() {
                 className="bg-gray-700 py-2 rounded hover:bg-gray-600 cursor-pointer"
               >
                 Clear Chat
-              </button>
-              <button
-                onClick={() => {
-                  localStorage.removeItem("chat_sessions_v1");
-                  setChats([]);
-                }}
-                className="bg-red-600 py-2 rounded hover:bg-red-700 cursor-pointer"
-              >
-                Reset All
               </button>
             </div>
           ) : (
