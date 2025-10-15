@@ -16,7 +16,7 @@ function App() {
         messages: [
           {
             sender: "bot",
-            text: "👋 Hi! I'm your chatbot. How can I help you today?",
+            text: "Hi! I'm your chatbot. How can I help you today?",
             time: new Date().toLocaleTimeString(),
           },
         ],
@@ -28,6 +28,8 @@ function App() {
   const [input, setInput] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isTyping, setIsTyping] = useState(false);
+  const [isListening, setIsListening] = useState(false); // 🎤 For speech input
+  const [enableVoice, setEnableVoice] = useState(true); // 🔊 For speech output
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
@@ -48,11 +50,11 @@ function App() {
     const id = Date.now().toString();
     const newChat = {
       id,
-      title: "New Chat", // default, will update on first user input
+      title: "New Chat",
       messages: [
         {
           sender: "bot",
-          text: "🆕 New chat started. Ask me anything!",
+          text: "New chat started. Ask me anything!",
           time: new Date().toLocaleTimeString(),
         },
       ],
@@ -86,6 +88,39 @@ function App() {
       }
     }
     return String(data);
+  };
+
+  // 🔊 Speak text aloud
+  const speak = (text) => {
+    if (!enableVoice || !window.speechSynthesis) return;
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = "en-US";
+    utterance.rate = 1;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utterance);
+  };
+
+  // 🎤 Start listening for voice input
+  const startListening = () => {
+    if (!("webkitSpeechRecognition" in window)) {
+      alert("Speech recognition is not supported in your browser.");
+      return;
+    }
+
+    const recognition = new window.webkitSpeechRecognition();
+    recognition.lang = "en-US";
+    recognition.interimResults = false;
+    recognition.continuous = false;
+
+    recognition.onstart = () => setIsListening(true);
+    recognition.onend = () => setIsListening(false);
+
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      setInput(transcript);
+    };
+
+    recognition.start();
   };
 
   const typeBotText = (chatId, fullText, speed = 18) => {
@@ -125,6 +160,7 @@ function App() {
       if (i >= fullText.length) {
         clearInterval(interval);
         setIsTyping(false);
+        speak(fullText); // 🔊 Speak once text finished typing
       }
     }, speed);
   };
@@ -133,10 +169,10 @@ function App() {
     const text = input.trim();
     if (!text || !selectedChat) return;
 
-    // 🧠 Update title with first user message if it's still the default one
     setChats((prev) =>
       prev.map((c) =>
-        c.id === selectedChat.id && (c.title === "New Chat" || c.title === "Main Chat")
+        c.id === selectedChat.id &&
+        (c.title === "New Chat" || c.title === "Main Chat")
           ? { ...c, title: text.length > 20 ? text.slice(0, 20) + "..." : text }
           : c
       )
@@ -165,7 +201,7 @@ function App() {
       typeBotText(selectedChat.id, String(replyText));
     } catch (err) {
       console.error(err);
-      const errText = "⚠️ Sorry — couldn't connect to the server.";
+      const errText = "Sorry — couldn't connect to the server.";
       setChats((prev) =>
         prev.map((c) =>
           c.id === selectedChat.id
@@ -272,6 +308,16 @@ function App() {
               >
                 Clear Chat
               </button>
+              <button
+                onClick={() => setEnableVoice((v) => !v)}
+                className={`py-2 rounded font-semibold ${
+                  enableVoice
+                    ? "bg-green-600 hover:bg-green-500"
+                    : "bg-gray-600 hover:bg-gray-500"
+                }`}
+              >
+                🔊 Voice: {enableVoice ? "On" : "Off"}
+              </button>
             </div>
           )}
         </div>
@@ -279,10 +325,6 @@ function App() {
 
       {/* Chat Area */}
       <div className="flex-1 flex flex-col">
-        <div className="px-6 py-4 bg-[#202123] text-white flex justify-between items-center shadow">
-          <h1 className="font-bold text-lg">AI Chat Bot</h1>
-        </div>
-
         <div className="flex-1 overflow-auto p-6 bg-[#343541]">
           <div className="max-w-3xl mx-auto flex flex-col gap-4">
             {selectedChat?.messages?.length ? (
@@ -325,15 +367,27 @@ function App() {
           </div>
         </div>
 
-        {/* Input */}
-        <div className="p-4 bg-[#202123] border-t border-gray-700">
+        {/* Input Section */}
+        <div className="p-4">
           <div className="max-w-3xl mx-auto flex gap-2">
+            <button
+              onClick={startListening}
+              className={`px-4 py-2 rounded-full flex items-center cursor-pointer justify-center text-lg transition-all ${
+                isListening
+                  ? "mic-active"
+                  : "bg-gray-600 hover:bg-gray-500 text-white"
+              }`}
+              title="Voice Input"
+            >
+              🎤
+            </button>
+
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSend()}
-              placeholder="Type your message..."
-              className="flex-1 bg-[#40414f] border border-gray-600 rounded-full px-4 py-2 text-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-500 transition"
+              placeholder="Type or speak your message..."
+              className="flex-1 bg-[#40414f] border border-gray-600 rounded-full px-4 py-3 text-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-500 transition"
             />
             <button
               onClick={handleSend}
