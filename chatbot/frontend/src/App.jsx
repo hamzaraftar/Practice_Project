@@ -34,7 +34,7 @@ function App() {
     try {
       localStorage.setItem("chat_sessions_v1", JSON.stringify(chats));
     } catch (e) {
-      console.error("Failed to save chats to localStorage:",e)
+      console.error("Failed to save chats to localStorage:", e);
     }
   }, [chats]);
 
@@ -48,7 +48,7 @@ function App() {
     const id = Date.now().toString();
     const newChat = {
       id,
-      title: `Chat ${chats.length + 1}`,
+      title: "New Chat", // default, will update on first user input
       messages: [
         {
           sender: "bot",
@@ -133,6 +133,15 @@ function App() {
     const text = input.trim();
     if (!text || !selectedChat) return;
 
+    // 🧠 Update title with first user message if it's still the default one
+    setChats((prev) =>
+      prev.map((c) =>
+        c.id === selectedChat.id && (c.title === "New Chat" || c.title === "Main Chat")
+          ? { ...c, title: text.length > 20 ? text.slice(0, 20) + "..." : text }
+          : c
+      )
+    );
+
     const userMsg = {
       sender: "user",
       text,
@@ -155,7 +164,7 @@ function App() {
       const replyText = extractReplyText(response);
       typeBotText(selectedChat.id, String(replyText));
     } catch (err) {
-      console.error(err)
+      console.error(err);
       const errText = "⚠️ Sorry — couldn't connect to the server.";
       setChats((prev) =>
         prev.map((c) =>
@@ -205,7 +214,7 @@ function App() {
           </button>
         </div>
 
-        {/* ✅ Fixed Chat List Section */}
+        {/* Chat List */}
         <div className="flex-1 overflow-auto p-2">
           {chats.map((c, index) => (
             <div
@@ -213,7 +222,7 @@ function App() {
               onClick={() => setSelectedId(c.id)}
               className={`p-3 rounded-lg mb-2 cursor-pointer transition flex items-center justify-between ${
                 c.id === selectedId
-                  ? "bg-emerald-600/40 border border-emerald-500/50"
+                  ? " bg-gray-700 hover:bg-gray-600"
                   : "hover:bg-gray-700/40"
               }`}
             >
@@ -237,7 +246,7 @@ function App() {
                   title={c.title}
                   className={`w-8 h-8 rounded-md flex items-center justify-center text-sm font-bold ${
                     c.id === selectedId
-                      ? "bg-emerald-600 text-white"
+                      ? "bg-gray-800 text-white"
                       : "bg-gray-700"
                   }`}
                 >
@@ -249,11 +258,11 @@ function App() {
         </div>
 
         <div className="p-3 border-t border-gray-700">
-          {sidebarOpen ? (
+          {sidebarOpen && (
             <div className="flex flex-col gap-2">
               <button
                 onClick={createNewChat}
-                className="bg-emerald-600 py-2 rounded font-semibold hover:bg-emerald-500 cursor-pointer"
+                className="bg-gray-700 py-2 rounded font-semibold hover:bg-gray-600 cursor-pointer"
               >
                 + New Chat
               </button>
@@ -264,10 +273,6 @@ function App() {
                 Clear Chat
               </button>
             </div>
-          ) : (
-            <div className="text-center text-xs opacity-70 py-2 cursor-pointer">
-              ⚙️
-            </div>
           )}
         </div>
       </div>
@@ -276,9 +281,6 @@ function App() {
       <div className="flex-1 flex flex-col">
         <div className="px-6 py-4 bg-[#202123] text-white flex justify-between items-center shadow">
           <h1 className="font-bold text-lg">AI Chat Bot</h1>
-          <span className="opacity-80 font-semibold text-sm">
-            {selectedChat?.title}
-          </span>
         </div>
 
         <div className="flex-1 overflow-auto p-6 bg-[#343541]">
@@ -289,7 +291,7 @@ function App() {
                   key={idx}
                   className={`p-3 rounded-2xl max-w-[75%] shadow transition ${
                     m.sender === "user"
-                      ? "self-end bg-emerald-600 text-white"
+                      ? "self-end bg-gray-500 text-white"
                       : "self-start bg-[#40414f] text-gray-100"
                   }`}
                 >
@@ -301,7 +303,7 @@ function App() {
               ))
             ) : (
               <div className="text-center text-gray-400 p-8 bg-[#40414f] rounded shadow">
-                No messages yet — start chatting!
+                No messages yet — start conversing!
               </div>
             )}
             {isTyping && (
@@ -331,11 +333,11 @@ function App() {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSend()}
               placeholder="Type your message..."
-              className="flex-1 bg-[#40414f] border border-gray-600 rounded-full px-4 py-2 text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
+              className="flex-1 bg-[#40414f] border border-gray-600 rounded-full px-4 py-2 text-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-500 transition"
             />
             <button
               onClick={handleSend}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2 rounded-full shadow cursor-pointer"
+              className="bg-gray-700 hover:bg-gray-600 text-white px-6 py-2 rounded-full shadow cursor-pointer"
             >
               Send
             </button>
