@@ -28,8 +28,8 @@ function App() {
   const [input, setInput] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isTyping, setIsTyping] = useState(false);
-  const [isListening, setIsListening] = useState(false); // 🎤 For speech input
-  const [enableVoice, setEnableVoice] = useState(true); // 🔊 For speech output
+  const [isListening, setIsListening] = useState(false); // speech input
+  const [enableVoice, setEnableVoice] = useState(true); // speech output
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
@@ -90,7 +90,7 @@ function App() {
     return String(data);
   };
 
-  // 🔊 Speak text aloud
+  // Speak text aloud
   const speak = (text) => {
     if (!enableVoice || !window.speechSynthesis) return;
     const utterance = new SpeechSynthesisUtterance(text);
@@ -100,7 +100,7 @@ function App() {
     window.speechSynthesis.speak(utterance);
   };
 
-  // 🎤 Start listening for voice input
+  // Start listening for voice input
   const startListening = () => {
     if (!("webkitSpeechRecognition" in window)) {
       alert("Speech recognition is not supported in your browser.");
@@ -160,7 +160,7 @@ function App() {
       if (i >= fullText.length) {
         clearInterval(interval);
         setIsTyping(false);
-        speak(fullText); // 🔊 Speak once text finished typing
+        speak(fullText);
       }
     }, speed);
   };
