@@ -1,0 +1,20 @@
+pip install -r requirements.txt
+pip freeze > requirements.txt
+
+Subject: Application for Internship in Web Development / Python
+
+Respected Sir/Madam,
+
+I hope this message finds you well. My name is [Your Son’s Name], and I am currently a 5th semester BSCS student at [University Name], Lahore. I have completed courses in Web Development and Python Programming and am eager to apply my skills in a professional environment.
+
+I am particularly interested in gaining hands-on experience in web development or Python-based projects. I have worked on academic and personal projects, and I am motivated to learn quickly, contribute to team goals, and further develop my technical expertise.
+
+I would be grateful if you could consider me for an internship opportunity at your esteemed organization. My CV is attached for your kind review.
+
+Looking forward to your positive response.
+
+Sincerely,
+[Your Son’s Name]
+[Contact Number]
+[Email Address]
+[LinkedIn / GitHub Profile link if available]
