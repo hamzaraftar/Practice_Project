@@ -22,7 +22,7 @@ class PollListCreateView(generics.ListCreateAPIView):
 
 
 
-class PollDetailView(generics.RetrieveDestroyAPIView):  # ← changed here
+class PollDetailView(generics.RetrieveDestroyAPIView): 
     queryset = Poll.objects.all()
     serializer_class = PollSerializer
 
@@ -31,10 +31,6 @@ class PollDetailView(generics.RetrieveDestroyAPIView):  # ← changed here
         poll.delete()
         return Response({"message": "Poll deleted successfully!"}, status=status.HTTP_204_NO_CONTENT)
 
-
-class PollDetailView(generics.RetrieveAPIView):
-    queryset = Poll.objects.all()
-    serializer_class = PollSerializer
 
 
 class VoteCreateView(generics.CreateAPIView):
