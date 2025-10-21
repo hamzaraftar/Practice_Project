@@ -40,7 +40,16 @@ INSTALLED_APPS = [
     'poll',
     'rest_framework',
     'corsheaders',
+    'channels',
 ]
+
+ASGI_APPLICATION = 'backend.asgi.application'
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer",
+    },
+}
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
