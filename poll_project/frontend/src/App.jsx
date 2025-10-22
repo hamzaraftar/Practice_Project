@@ -4,50 +4,51 @@ import axios from "axios";
 function App() {
   const [polls, setPolls] = useState([]);
   const [question, setQuestion] = useState("");
-  const [options, setOptions] = useState(["", ""]); // start with 2 options
+  const [options, setOptions] = useState(["", ""]);
 
-  // Fetch polls from backend
+  // Fetch all polls
   const fetchPolls = async () => {
     const res = await axios.get("http://localhost:8000/api/polls/");
     setPolls(res.data);
   };
 
-  // Vote for an option
-  const vote = async (optionId) => {
-    await axios.post("http://localhost:8000/api/vote/", { option: optionId });
+  // Create a new poll
+  const createPoll = async (e) => {
+    e.preventDefault();
+    if (!question.trim() || options.some((opt) => !opt.trim())) {
+      alert("Please fill in the question and all options.");
+      return;
+    }
+    await axios.post("http://localhost:8000/api/polls/", {
+      question,
+      options,
+    });
+    setQuestion("");
+    setOptions(["", ""]);
     fetchPolls();
   };
 
-  // Delete a poll
-  const deletePoll = async (pollId) => {
-    await axios.delete(`http://localhost:8000/api/polls/${pollId}/`);
-    fetchPolls();
+  // Add new option input
+  const addOption = () => {
+    setOptions([...options, ""]);
   };
 
-  // Add option input dynamically
-  const addOption = () => setOptions([...options, ""]);
-
-  // Handle option text change
+  // Handle option input change
   const handleOptionChange = (index, value) => {
     const newOptions = [...options];
     newOptions[index] = value;
     setOptions(newOptions);
   };
 
-  // Create a new poll
-  const createPoll = async () => {
-    if (!question.trim() || options.some((opt) => !opt.trim())) {
-      alert("Question and all options are required");
-      return;
-    }
+  // Vote for an option
+  const vote = async (optionId) => {
+    await axios.post("http://localhost:8000/api/vote/", { option: optionId });
+    fetchPolls(); // refresh results
+  };
 
-    await axios.post("http://localhost:8000/api/polls/", {
-      question,
-      options,
-    });
-
-    setQuestion("");
-    setOptions(["", ""]); // reset form
+  // Delete a poll
+  const deletePoll = async (pollId) => {
+    await axios.delete(`http://localhost:8000/api/polls/${pollId}/`);
     fetchPolls();
   };
 
@@ -57,18 +58,23 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-100 p-6">
-      <h1 className="text-3xl font-bold mb-6 text-center">Live Polls</h1>
+      <h1 className="text-3xl font-bold mb-6 text-center text-gray-800">Live Polls</h1>
 
-      {/* Create Poll Section */}
-      <div className="bg-white rounded-lg shadow-md p-4 border border-gray-200 mb-6">
-        <h2 className="text-xl font-semibold mb-3">Create New Poll</h2>
+      {/* Create Poll Form */}
+      <form
+        onSubmit={createPoll}
+        className="max-w-xl mx-auto bg-white shadow-md rounded-lg p-6 mb-8 border border-gray-200"
+      >
+        <h2 className="text-xl font-semibold mb-4 text-gray-700">Create New Poll</h2>
+
         <input
           type="text"
-          placeholder="Poll Question"
+          placeholder="Enter your poll question"
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
-          className="w-full mb-3 p-2 border rounded"
+          className="w-full p-2 border rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
+
         {options.map((opt, index) => (
           <input
             key={index}
@@ -76,44 +82,49 @@ function App() {
             placeholder={`Option ${index + 1}`}
             value={opt}
             onChange={(e) => handleOptionChange(index, e.target.value)}
-            className="w-full mb-2 p-2 border rounded"
+            className="w-full p-2 border rounded-lg mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         ))}
+
         <button
+          type="button"
           onClick={addOption}
-          className="mb-2 px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded"
+          className="px-3 py-1 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded-lg mb-4"
         >
           + Add Option
         </button>
-        <br />
+
         <button
-          onClick={createPoll}
-          className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded"
+          type="submit"
+          className="block w-full bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-lg font-semibold"
         >
           Create Poll
         </button>
-      </div>
+      </form>
 
-      {/* Poll List */}
-      <div className="space-y-4">
+      {/* Polls List */}
+      <div className="space-y-4 max-w-2xl mx-auto">
         {polls.map((poll) => (
           <div
             key={poll.id}
             className="bg-white rounded-lg shadow-md p-4 border border-gray-200"
           >
-            <h3 className="text-xl font-semibold mb-3">{poll.question}</h3>
+            <h3 className="text-lg font-semibold mb-3 text-gray-800">
+              {poll.question}
+            </h3>
             <div className="space-y-2">
               {poll.options.map((opt) => (
                 <button
                   key={opt.id}
                   onClick={() => vote(opt.id)}
-                  className="w-full text-left px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg flex justify-between items-center"
+                  className="w-full text-left px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg flex justify-between items-center transition duration-150"
                 >
-                  {opt.text}{" "}
+                  {opt.text}
                   <span className="font-bold">{opt.votes_count}</span>
                 </button>
               ))}
             </div>
+
             <button
               onClick={() => deletePoll(poll.id)}
               className="mt-4 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg"
