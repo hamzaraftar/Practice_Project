@@ -2,24 +2,36 @@
 from rest_framework import generics, status
 from rest_framework.response import Response
 from .models import Poll, Option, Vote
-from .serializers import PollSerializer, OptionSerializer, VoteSerializer
+from .serializers import PollSerializer, VoteSerializer
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
-class PollListCreateView(generics.ListCreateAPIView):
-    queryset = Poll.objects.all()
-    serializer_class = PollSerializer
+from rest_framework.views import APIView
 
-    def create(self, request, *args, **kwargs):
+
+
+class PollListCreateView(APIView):
+    def get(self, request):        
+        polls = Poll.objects.all()
+        serializer = PollSerializer(polls, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):        
         question = request.data.get('question')
         options = request.data.get('options', [])
 
+        if not question and not options:
+            return Response(
+                {"error": "Question and options are required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+       
         poll = Poll.objects.create(question=question)
+
         for text in options:
             Option.objects.create(poll=poll, text=text)
-
-        return Response(PollSerializer(poll).data, status=status.HTTP_201_CREATED)
-
-
+        
+        serializer = PollSerializer(poll)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 
