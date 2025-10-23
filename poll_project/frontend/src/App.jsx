@@ -8,6 +8,10 @@ function App() {
   const [loadingVote, setLoadingVote] = useState(null);
   const [socket, setSocket] = useState(null);
 
+  // 💬 Chat State
+  const [messages, setMessages] = useState([]);
+  const [chatInput, setChatInput] = useState("");
+
   // Fetch polls
   const fetchPolls = async () => {
     try {
@@ -20,26 +24,32 @@ function App() {
 
   // Connect to WebSocket
   useEffect(() => {
-  const socket = new WebSocket("ws://127.0.0.1:8000/ws/polls/");
+    const socket = new WebSocket("ws://127.0.0.1:8000/ws/polls/");
 
-  socket.onopen = () => console.log("✅ WebSocket connected");
-  socket.onmessage = (event) => {
-    const data = JSON.parse(event.data);
-    console.log("📩 Update from server:", data);
+    socket.onopen = () => console.log("✅ WebSocket connected");
 
-    // Check the message type and refetch polls
-    if (data.message === "vote_update" || data.message === "poll_update") {
-      fetchPolls();
-    }
-  };
-  socket.onerror = (e) => console.warn("⚠️ WebSocket error:", e);
-  socket.onclose = () => console.error("❌ WebSocket disconnected");
+    socket.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      console.log("📩 Update from server:", data);
 
-  setSocket(socket);
+      // 🗳 Handle poll or vote updates
+      if (data.message === "vote_update" || data.message === "poll_update") {
+        fetchPolls();
+      }
 
-  return () => socket.close();
-}, []);
+      // 💬 Handle incoming chat messages
+      if (data.type === "chat_message") {
+        setMessages((prev) => [...prev, data]);
+      }
+    };
 
+    socket.onerror = (e) => console.warn("⚠️ WebSocket error:", e);
+    socket.onclose = () => console.error("❌ WebSocket disconnected");
+
+    setSocket(socket);
+
+    return () => socket.close();
+  }, []);
 
   // Create poll
   const createPoll = async (e) => {
@@ -89,11 +99,19 @@ function App() {
 
   // Add new option field
   const addOption = () => setOptions([...options, ""]);
-
   const handleOptionChange = (index, value) => {
     const newOptions = [...options];
     newOptions[index] = value;
     setOptions(newOptions);
+  };
+
+  // 💬 Send chat message
+  const sendMessage = (e) => {
+    e.preventDefault();
+    if (!chatInput.trim()) return;
+    const msg = { type: "chat_message", text: chatInput };
+    socket?.send(JSON.stringify(msg));
+    setChatInput("");
   };
 
   useEffect(() => {
@@ -101,15 +119,15 @@ function App() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-100 p-6">
+    <div className="min-h-screen bg-gray-100 p-6 flex flex-col items-center">
       <h1 className="text-3xl font-bold mb-6 text-center text-gray-800">
-        Live Polls
+        Live Polls + Chat
       </h1>
 
       {/* Create Poll Form */}
       <form
         onSubmit={createPoll}
-        className="max-w-xl mx-auto bg-white shadow-md rounded-lg p-6 mb-8 border border-gray-200"
+        className="max-w-xl w-full bg-white shadow-md rounded-lg p-6 mb-8 border border-gray-200"
       >
         <h2 className="text-xl font-semibold mb-4 text-gray-700">
           Create New Poll
@@ -151,7 +169,7 @@ function App() {
       </form>
 
       {/* Polls List */}
-      <div className="space-y-4 max-w-2xl mx-auto">
+      <div className="space-y-4 max-w-2xl w-full mb-10">
         {polls.map((poll) => (
           <div
             key={poll.id}
@@ -186,6 +204,43 @@ function App() {
             </button>
           </div>
         ))}
+      </div>
+
+      {/* 💬 Chat Section */}
+      <div className="w-full max-w-2xl bg-white rounded-lg shadow-md border border-gray-200 p-4 flex flex-col">
+        <h2 className="text-lg font-semibold text-gray-700 mb-3">Live Chat</h2>
+        <div className="flex-1 overflow-y-auto h-64 border p-2 rounded-lg bg-gray-50 mb-3">
+          {messages.length === 0 ? (
+            <p className="text-gray-400 text-center mt-20">
+              No messages yet. Start chatting!
+            </p>
+          ) : (
+            messages.map((msg, index) => (
+              <div
+                key={index}
+                className="bg-blue-100 px-3 py-2 rounded-lg mb-2 text-gray-800 shadow-sm"
+              >
+                {msg.text}
+              </div>
+            ))
+          )}
+        </div>
+
+        <form onSubmit={sendMessage} className="flex gap-2">
+          <input
+            type="text"
+            placeholder="Type your message..."
+            value={chatInput}
+            onChange={(e) => setChatInput(e.target.value)}
+            className="flex-1 border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <button
+            type="submit"
+            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg active:scale-95 transition"
+          >
+            Send
+          </button>
+        </form>
       </div>
     </div>
   );

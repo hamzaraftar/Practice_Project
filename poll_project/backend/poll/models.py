@@ -13,3 +13,10 @@ class Option(models.Model):
 class Vote(models.Model):
     option = models.ForeignKey(Option, related_name='votes', on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
+
+
+class ChatMessage(models.Model):
+    poll = models.ForeignKey(Poll, on_delete=models.CASCADE, related_name="messages")
+    user = models.CharField(max_length=100)
+    content = models.TextField()
+    timestamp = models.DateTimeField(auto_now_add=True)
