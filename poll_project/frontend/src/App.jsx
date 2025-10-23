@@ -20,23 +20,26 @@ function App() {
 
   // Connect to WebSocket
   useEffect(() => {
-    const socket = new WebSocket("ws://127.0.0.1:8000/ws/polls/");
+  const socket = new WebSocket("ws://127.0.0.1:8000/ws/polls/");
 
-    socket.onopen = () => console.log("✅ WebSocket connected");
-    socket.onmessage = (event) =>
-      console.log("📩 Message from server:", event.data);
-    socket.onerror = (error) => console.error("⚠️ WebSocket error:", error);
-    socket.onclose = () => console.log("❌ WebSocket closed");
+  socket.onopen = () => console.log("✅ WebSocket connected");
+  socket.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    console.log("📩 Update from server:", data);
 
-    // Send a message after connect to keep connection alive
-    setTimeout(() => {
-      if (socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify({ action: "ping" }));
-      }
-    }, 1000);
+    // Check the message type and refetch polls
+    if (data.message === "vote_update" || data.message === "poll_update") {
+      fetchPolls();
+    }
+  };
+  socket.onerror = (e) => console.warn("⚠️ WebSocket error:", e);
+  socket.onclose = () => console.error("❌ WebSocket disconnected");
 
-    return () => socket.close();
-  }, []);
+  setSocket(socket);
+
+  return () => socket.close();
+}, []);
+
 
   // Create poll
   const createPoll = async (e) => {

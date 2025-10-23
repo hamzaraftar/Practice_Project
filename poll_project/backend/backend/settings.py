@@ -49,7 +49,8 @@ INSTALLED_APPS = [
     'channels',
 ]
 
-ASGI_APPLICATION = 'backend.asgi.application'
+# Channels
+ASGI_APPLICATION = "backend.asgi.application"
 
 CHANNEL_LAYERS = {
     "default": {
