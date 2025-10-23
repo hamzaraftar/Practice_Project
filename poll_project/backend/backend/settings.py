@@ -28,6 +28,12 @@ DEBUG = True
 ALLOWED_HOSTS = []
 CORS_ALLOW_ALL_ORIGINS = True
 
+from channels.security.websocket import AllowedHostsOriginValidator
+ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
+CSRF_TRUSTED_ORIGINS = ["http://127.0.0.1:5173", "http://localhost:5173"]
+
+
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -47,9 +53,10 @@ ASGI_APPLICATION = 'backend.asgi.application'
 
 CHANNEL_LAYERS = {
     "default": {
-        "BACKEND": "channels.layers.InMemoryChannelLayer",
-    },
+        "BACKEND": "channels.layers.InMemoryChannelLayer"
+    }
 }
+
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',

@@ -6,8 +6,9 @@ function App() {
   const [question, setQuestion] = useState("");
   const [options, setOptions] = useState(["", ""]);
   const [loadingVote, setLoadingVote] = useState(null);
+  const [socket, setSocket] = useState(null);
 
-  // Fetch all polls
+  // Fetch polls
   const fetchPolls = async () => {
     try {
       const res = await axios.get("http://localhost:8000/api/polls/");
@@ -17,7 +18,27 @@ function App() {
     }
   };
 
-  // Create a new poll
+  // Connect to WebSocket
+  useEffect(() => {
+    const socket = new WebSocket("ws://127.0.0.1:8000/ws/polls/");
+
+    socket.onopen = () => console.log("✅ WebSocket connected");
+    socket.onmessage = (event) =>
+      console.log("📩 Message from server:", event.data);
+    socket.onerror = (error) => console.error("⚠️ WebSocket error:", error);
+    socket.onclose = () => console.log("❌ WebSocket closed");
+
+    // Send a message after connect to keep connection alive
+    setTimeout(() => {
+      if (socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ action: "ping" }));
+      }
+    }, 1000);
+
+    return () => socket.close();
+  }, []);
+
+  // Create poll
   const createPoll = async (e) => {
     e.preventDefault();
     if (!question.trim() || options.some((opt) => !opt.trim())) {
@@ -32,29 +53,19 @@ function App() {
       setQuestion("");
       setOptions(["", ""]);
       fetchPolls();
+      socket?.send(JSON.stringify({ type: "poll_update" }));
     } catch (err) {
       console.error("Error creating poll:", err);
     }
   };
 
-  // Add new option input
-  const addOption = () => {
-    setOptions([...options, ""]);
-  };
-
-  // Handle option input change
-  const handleOptionChange = (index, value) => {
-    const newOptions = [...options];
-    newOptions[index] = value;
-    setOptions(newOptions);
-  };
-
-  // Vote for an option
+  // Vote
   const vote = async (optionId) => {
     setLoadingVote(optionId);
     try {
       await axios.post("http://localhost:8000/api/vote/", { option: optionId });
-      fetchPolls(); // refresh results
+      fetchPolls();
+      socket?.send(JSON.stringify({ type: "vote_update" }));
     } catch (err) {
       console.error("Error voting:", err);
     } finally {
@@ -62,14 +73,24 @@ function App() {
     }
   };
 
-  // Delete a poll
+  // Delete poll
   const deletePoll = async (pollId) => {
     try {
-      await axios.delete(`http://localhost:8000/api/polls/${pollId}/`);
+      await axios.delete(`http://localhost:8000/api/polls/${pollId}/delete/`);
       fetchPolls();
+      socket?.send(JSON.stringify({ type: "poll_update" }));
     } catch (err) {
       console.error("Error deleting poll:", err);
     }
+  };
+
+  // Add new option field
+  const addOption = () => setOptions([...options, ""]);
+
+  const handleOptionChange = (index, value) => {
+    const newOptions = [...options];
+    newOptions[index] = value;
+    setOptions(newOptions);
   };
 
   useEffect(() => {
@@ -113,14 +134,14 @@ function App() {
         <button
           type="button"
           onClick={addOption}
-          className="px-3 py-1 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded-lg mb-4 transition"
+          className="px-3 py-1 bg-gray-300 hover:bg-gray-400 text-gray-800 mb-4 active:scale-95 rounded-lg transition transform duration-150"
         >
           + Add Option
         </button>
 
         <button
           type="submit"
-          className="block w-full bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-lg font-semibold transition"
+          className="block w-full bg-blue-500 hover:bg-blue-600 text-white py-2 font-semibold active:scale-95 rounded-lg transition transform duration-150"
         >
           Create Poll
         </button>
@@ -145,7 +166,7 @@ function App() {
                   className={`w-full text-left px-4 py-2 rounded-lg flex justify-between items-center transition duration-150 ${
                     loadingVote === opt.id
                       ? "bg-blue-300 cursor-not-allowed"
-                      : "bg-blue-500 hover:bg-blue-600 text-white"
+                      : "bg-blue-500 hover:bg-blue-600 text-white cursor-pointer"
                   }`}
                 >
                   {opt.text}
@@ -156,7 +177,7 @@ function App() {
 
             <button
               onClick={() => deletePoll(poll.id)}
-              className="mt-4 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition"
+              className="mt-4 px-4 py-2 bg-red-500 hover:bg-red-600 active:scale-95 text-white rounded-lg transition transform duration-150 shadow-md cursor-pointer"
             >
               Delete Poll
             </button>

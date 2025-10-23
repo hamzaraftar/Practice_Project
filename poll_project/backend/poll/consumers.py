@@ -3,43 +3,14 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 
 class PollConsumer(AsyncWebsocketConsumer):
     async def connect(self):
-        self.poll_id = self.scope['url_route']['kwargs']['poll_id']
-        self.room_group_name = f'poll_{self.poll_id}'
-
-        # Join room group
-        await self.channel_layer.group_add(
-            self.room_group_name,
-            self.channel_name
-        )
-
         await self.accept()
+        print("✅ WebSocket connected")
 
     async def disconnect(self, close_code):
-        # Leave room group
-        await self.channel_layer.group_discard(
-            self.room_group_name,
-            self.channel_name
-        )
+        print("❌ WebSocket disconnected")
 
-    # Receive message from WebSocket
     async def receive(self, text_data):
-        data = json.loads(text_data)
-        message = data['message']
-
-        # Send message to room group
-        await self.channel_layer.group_send(
-            self.room_group_name,
-            {
-                'type': 'poll_message',
-                'message': message
-            }
-        )
-
-    # Receive message from room group
-    async def poll_message(self, event):
-        message = event['message']
-
-        # Send message to WebSocket
+        print("📩 Message received:", text_data)
         await self.send(text_data=json.dumps({
-            'message': message
+            "message": "Hello from Django!"
         }))
