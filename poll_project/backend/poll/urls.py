@@ -6,7 +6,7 @@ urlpatterns = [
 
     path('polls/<int:pk>/detail/', PollDetailView.as_view(), name='poll-detail'),
 
-    path('chat/messages/<int:poll_id>/', ChatMessageView.as_view(), name='chat-messages'),
+    path('chat/messages/<int:poll_id>/', ChatMessageView.as_view(), name='chat_messages'),
 
     path('polls/<int:pk>/delete/', PollDeleteView.as_view(), name='poll-delete'),
 

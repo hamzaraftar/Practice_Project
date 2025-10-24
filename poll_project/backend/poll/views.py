@@ -61,48 +61,42 @@ class VoteCreateView(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)        
     
-
 class ChatMessageView(APIView):
     def get(self, request, poll_id):
         try:
             poll = Poll.objects.get(id=poll_id)
         except Poll.DoesNotExist:
-            return Response({"error": "Poll not found."}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": "Poll not found"}, status=status.HTTP_404_NOT_FOUND)
 
         messages = ChatMessage.objects.filter(poll=poll).order_by('timestamp')
         serialized_messages = [
             {
-                'username': msg.username,
-                'message': msg.message,
-                'timestamp': msg.timestamp
+                "user": msg.user,
+                "text": msg.content,
+                "timestamp": msg.timestamp
             } for msg in messages
         ]
         return Response(serialized_messages)
 
     def post(self, request, poll_id):
-        try:
-            poll = Poll.objects.get(id=poll_id)
-        except Poll.DoesNotExist:
-            return Response({"error": "Poll not found."}, status=status.HTTP_404_NOT_FOUND)
+        user = request.data.get("user")
+        text = request.data.get("text")
 
-        username = request.data.get('username')
-        message = request.data.get('message')
-
-        if not username or not message:
+        if not user or not text:
             return Response(
-                {"error": "Username and message are required."},
+                {"error": "User and text are required."},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        chat_message = ChatMessage.objects.create(
-            poll=poll,
-            username=username,
-            message=message
-        )
+        try:
+            poll = Poll.objects.get(id=poll_id)
+        except Poll.DoesNotExist:
+            return Response({"error": "Poll not found"}, status=status.HTTP_404_NOT_FOUND)
 
+        chat_message = ChatMessage.objects.create(poll=poll, user=user, content=text)
         serialized_message = {
-            'username': chat_message.username,
-            'message': chat_message.message,
-            'timestamp': chat_message.timestamp
+            "user": chat_message.user,
+            "text": chat_message.content,
+            "timestamp": chat_message.timestamp
         }
         return Response(serialized_message, status=status.HTTP_201_CREATED)

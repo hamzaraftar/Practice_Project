@@ -18,7 +18,7 @@ function App() {
       ? "localhost:8000"
       : window.location.host;
 
-  // Fetch all polls
+  // 📦 Fetch all polls
   const fetchPolls = async () => {
     try {
       const res = await axios.get("http://localhost:8000/api/polls/");
@@ -51,10 +51,11 @@ function App() {
     return () => ws.close();
   }, []);
 
-  // Fetch previous chat messages
+  // 💬 Fetch previous chat messages for a poll
   const fetchChatMessages = async (pollId) => {
     try {
-      const res = await axios.get(`http://localhost:8000/chat/messages/?poll=${pollId}`);
+      const res = await axios.get(`http://localhost:8000/chat/messages/${pollId}/`);
+
       setMessages(res.data);
     } catch (err) {
       console.error("Error fetching chat messages:", err);
@@ -69,8 +70,10 @@ function App() {
       return;
     }
 
+    // First, fetch existing chat history
     fetchChatMessages(selectedPoll.id);
 
+    // Then, connect WebSocket
     const cs = new WebSocket(`${wsScheme}://${host}/ws/chat/${selectedPoll.id}/`);
 
     cs.onopen = () => {
@@ -218,7 +221,9 @@ function App() {
               <div
                 key={poll.id}
                 className={`p-4 border rounded-lg shadow-sm ${
-                  selectedPoll?.id === poll.id ? "border-blue-500" : "border-gray-200"
+                  selectedPoll?.id === poll.id
+                    ? "border-blue-500"
+                    : "border-gray-200"
                 }`}
               >
                 <h3 className="font-semibold mb-2">{poll.question}</h3>
@@ -272,9 +277,7 @@ function App() {
                   <div
                     key={i}
                     className={`flex ${
-                      msg.user === "User"
-                        ? "justify-end"
-                        : "justify-start"
+                      msg.user === "User" ? "justify-end" : "justify-start"
                     } mb-2`}
                   >
                     <div
