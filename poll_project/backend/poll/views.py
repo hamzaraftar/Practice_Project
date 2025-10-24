@@ -1,7 +1,7 @@
 
 from rest_framework import  status
 from rest_framework.response import Response
-from .models import Poll, Option, Vote
+from .models import Poll, Option, ChatMessage
 from .serializers import PollSerializer, VoteSerializer
 from rest_framework.views import APIView
 
@@ -60,3 +60,49 @@ class VoteCreateView(APIView):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)        
+    
+
+class ChatMessageView(APIView):
+    def get(self, request, poll_id):
+        try:
+            poll = Poll.objects.get(id=poll_id)
+        except Poll.DoesNotExist:
+            return Response({"error": "Poll not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        messages = ChatMessage.objects.filter(poll=poll).order_by('timestamp')
+        serialized_messages = [
+            {
+                'username': msg.username,
+                'message': msg.message,
+                'timestamp': msg.timestamp
+            } for msg in messages
+        ]
+        return Response(serialized_messages)
+
+    def post(self, request, poll_id):
+        try:
+            poll = Poll.objects.get(id=poll_id)
+        except Poll.DoesNotExist:
+            return Response({"error": "Poll not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        username = request.data.get('username')
+        message = request.data.get('message')
+
+        if not username or not message:
+            return Response(
+                {"error": "Username and message are required."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        chat_message = ChatMessage.objects.create(
+            poll=poll,
+            username=username,
+            message=message
+        )
+
+        serialized_message = {
+            'username': chat_message.username,
+            'message': chat_message.message,
+            'timestamp': chat_message.timestamp
+        }
+        return Response(serialized_message, status=status.HTTP_201_CREATED)
