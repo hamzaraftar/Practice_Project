@@ -1,14 +1,19 @@
 import os
+import django
 from channels.routing import ProtocolTypeRouter, URLRouter
-from django.core.asgi import get_asgi_application
 from channels.auth import AuthMiddlewareStack
-import poll.routing  
+from django.core.asgi import get_asgi_application
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'backend.settings')
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "backend.settings")
+django.setup()  # ✅ make sure Django loads before imports
+
+from poll import routing  # ✅ import AFTER django.setup()
 
 application = ProtocolTypeRouter({
     "http": get_asgi_application(),
     "websocket": AuthMiddlewareStack(
-        URLRouter(poll.routing.websocket_urlpatterns)
+        URLRouter(
+            routing.websocket_urlpatterns
+        )
     ),
 })

@@ -6,13 +6,20 @@ function App() {
   const [question, setQuestion] = useState("");
   const [options, setOptions] = useState(["", ""]);
   const [loadingVote, setLoadingVote] = useState(null);
-  const [socket, setSocket] = useState(null);
 
-  // 💬 Chat State
+  const [selectedPoll, setSelectedPoll] = useState(null);
+  const [globalSocket, setGlobalSocket] = useState(null);
+  const [chatSocket, setChatSocket] = useState(null);
   const [messages, setMessages] = useState([]);
   const [chatInput, setChatInput] = useState("");
 
-  // Fetch polls
+  const wsScheme = window.location.protocol === "https:" ? "wss" : "ws";
+  const host =
+    window.location.hostname === "localhost"
+      ? "localhost:8000"
+      : window.location.host;
+
+  // Fetch all polls
   const fetchPolls = async () => {
     try {
       const res = await axios.get("http://localhost:8000/api/polls/");
@@ -22,63 +29,136 @@ function App() {
     }
   };
 
-  // Connect to WebSocket
   useEffect(() => {
-    const socket = new WebSocket("ws://127.0.0.1:8000/ws/polls/");
+    fetchPolls();
+  }, []);
 
-    socket.onopen = () => console.log("✅ WebSocket connected");
+  // 🌍 Global WebSocket connection (always open)
+  useEffect(() => {
+    const ws = new WebSocket(`${wsScheme}://${host}/ws/polls/`);
 
-    socket.onmessage = (event) => {
+    ws.onopen = () => {
+      console.log("✅ Global WS connected");
+      setGlobalSocket(ws);
+    };
+
+    ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
-      console.log("📩 Update from server:", data);
+      console.log("🌍 Global WS Message:", data);
 
-      // 🗳 Handle poll or vote updates
-      if (data.message === "vote_update" || data.message === "poll_update") {
+      if (["poll_created", "poll_deleted", "vote_update"].includes(data.type)) {
         fetchPolls();
-      }
-
-      // 💬 Handle incoming chat messages
-      if (data.type === "chat_message") {
-        setMessages((prev) => [...prev, data]);
       }
     };
 
-    socket.onerror = (e) => console.warn("⚠️ WebSocket error:", e);
-    socket.onclose = () => console.error("❌ WebSocket disconnected");
+    ws.onerror = (err) => console.warn("⚠️ Global WS error:", err);
+    ws.onclose = () => console.log("❌ Global WS closed");
 
-    setSocket(socket);
-
-    return () => socket.close();
+    return () => {
+      ws.close();
+      setGlobalSocket(null);
+    };
   }, []);
 
-  // Create poll
-  const createPoll = async (e) => {
-    e.preventDefault();
-    if (!question.trim() || options.some((opt) => !opt.trim())) {
-      alert("Please fill in the question and all options.");
+  // 💬 Per-poll chat WebSocket
+  useEffect(() => {
+    if (!selectedPoll) {
+      if (chatSocket) {
+        try {
+          chatSocket.close();
+        } catch (e) {}
+        setChatSocket(null);
+      }
+      setMessages([]);
       return;
     }
+
+    if (chatSocket) {
+      try {
+        chatSocket.close();
+      } catch (e) {}
+      setChatSocket(null);
+    }
+
+    const cs = new WebSocket(`${wsScheme}://${host}/ws/chat/${selectedPoll.id}/`);
+
+    cs.onopen = () => {
+      console.log(`✅ Connected to Poll Chat #${selectedPoll.id}`);
+      setChatSocket(cs);
+    };
+
+    cs.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        console.log("📩 Chat WS Message:", data);
+
+        if (data.type === "chat_message") {
+          setMessages((prev) => [...prev, data]);
+        } else if (data.type === "vote_update") {
+          fetchPolls();
+        }
+      } catch (err) {
+        console.error("Error parsing chat WS message:", err);
+      }
+    };
+
+    cs.onerror = (e) => console.warn("⚠️ Chat WS error:", e);
+    cs.onclose = () => console.log("❌ Chat WS closed");
+
+    return () => {
+      try {
+        cs.close();
+      } catch (e) {}
+      setChatSocket(null);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedPoll]);
+
+  // 🧱 Create Poll
+  const createPoll = async (e) => {
+    e.preventDefault();
+    if (!question.trim() || options.some((o) => !o.trim())) {
+      alert("Please fill question and options");
+      return;
+    }
+
     try {
-      await axios.post("http://localhost:8000/api/polls/", {
+      const res = await axios.post("http://localhost:8000/api/polls/", {
         question,
         options,
       });
+
       setQuestion("");
       setOptions(["", ""]);
-      fetchPolls();
-      socket?.send(JSON.stringify({ type: "poll_update" }));
+
+      // locally add or re-fetch
+      const created = res.data;
+      if (created?.id) setPolls((prev) => [created, ...prev]);
+      else await fetchPolls();
+
+      // notify via global WS
+      if (globalSocket?.readyState === WebSocket.OPEN) {
+        globalSocket.send(JSON.stringify({ type: "poll_created" }));
+      }
     } catch (err) {
       console.error("Error creating poll:", err);
     }
   };
 
-  // Vote
+  // 🗳 Vote
   const vote = async (optionId) => {
     setLoadingVote(optionId);
     try {
       await axios.post("http://localhost:8000/api/vote/", { option: optionId });
       fetchPolls();
-      socket?.send(JSON.stringify({ type: "vote_update" }));
+
+      // notify via sockets
+      if (globalSocket?.readyState === WebSocket.OPEN) {
+        globalSocket.send(JSON.stringify({ type: "vote_update" }));
+      }
+      if (chatSocket?.readyState === WebSocket.OPEN) {
+        chatSocket.send(JSON.stringify({ type: "vote_update" }));
+      }
     } catch (err) {
       console.error("Error voting:", err);
     } finally {
@@ -86,162 +166,176 @@ function App() {
     }
   };
 
-  // Delete poll
+  // 🗑 Delete Poll
   const deletePoll = async (pollId) => {
     try {
       await axios.delete(`http://localhost:8000/api/polls/${pollId}/delete/`);
-      fetchPolls();
-      socket?.send(JSON.stringify({ type: "poll_update" }));
+      setPolls((prev) => prev.filter((p) => p.id !== pollId));
+
+      if (globalSocket?.readyState === WebSocket.OPEN) {
+        globalSocket.send(JSON.stringify({ type: "poll_deleted" }));
+      }
+
+      if (selectedPoll?.id === pollId) {
+        setSelectedPoll(null);
+        setMessages([]);
+        if (chatSocket) chatSocket.close();
+      }
     } catch (err) {
       console.error("Error deleting poll:", err);
     }
   };
 
-  // Add new option field
-  const addOption = () => setOptions([...options, ""]);
-  const handleOptionChange = (index, value) => {
-    const newOptions = [...options];
-    newOptions[index] = value;
-    setOptions(newOptions);
-  };
-
   // 💬 Send chat message
   const sendMessage = (e) => {
     e.preventDefault();
-    if (!chatInput.trim()) return;
-    const msg = { type: "chat_message", text: chatInput };
-    socket?.send(JSON.stringify(msg));
-    setChatInput("");
+    if (!chatInput.trim() || !chatSocket) return;
+
+    const msg = { type: "chat_message", text: chatInput, user: "User" };
+    if (chatSocket.readyState === WebSocket.OPEN) {
+      chatSocket.send(JSON.stringify(msg));
+      setChatInput("");
+    }
   };
 
-  useEffect(() => {
-    fetchPolls();
-  }, []);
+  const addOption = () => setOptions([...options, ""]);
+  const handleOptionChange = (i, value) => {
+    const newOps = [...options];
+    newOps[i] = value;
+    setOptions(newOps);
+  };
 
+  // -----------------------
+  // JSX
+  // -----------------------
   return (
     <div className="min-h-screen bg-gray-100 p-6 flex flex-col items-center">
-      <h1 className="text-3xl font-bold mb-6 text-center text-gray-800">
-        Live Polls + Chat
-      </h1>
+      <h1 className="text-3xl font-bold mb-6 text-gray-800">Live Polls + Chat</h1>
 
-      {/* Create Poll Form */}
+      {/* Create Poll */}
       <form
         onSubmit={createPoll}
-        className="max-w-xl w-full bg-white shadow-md rounded-lg p-6 mb-8 border border-gray-200"
+        className="max-w-xl w-full bg-white shadow-md rounded-lg p-6 mb-8"
       >
-        <h2 className="text-xl font-semibold mb-4 text-gray-700">
-          Create New Poll
-        </h2>
-
+        <h2 className="text-xl font-semibold mb-4">Create New Poll</h2>
         <input
           type="text"
-          placeholder="Enter your poll question"
+          placeholder="Poll question"
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
-          className="w-full p-2 border rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full p-2 border rounded-lg mb-4"
         />
-
-        {options.map((opt, index) => (
+        {options.map((opt, i) => (
           <input
-            key={index}
+            key={i}
             type="text"
-            placeholder={`Option ${index + 1}`}
+            placeholder={`Option ${i + 1}`}
             value={opt}
-            onChange={(e) => handleOptionChange(index, e.target.value)}
-            className="w-full p-2 border rounded-lg mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            onChange={(e) => handleOptionChange(i, e.target.value)}
+            className="w-full p-2 border rounded-lg mb-2"
           />
         ))}
-
         <button
           type="button"
           onClick={addOption}
-          className="px-3 py-1 bg-gray-300 hover:bg-gray-400 text-gray-800 mb-4 active:scale-95 rounded-lg transition transform duration-150"
+          className="bg-gray-300 px-3 py-1 rounded-lg mb-4"
         >
           + Add Option
         </button>
-
         <button
           type="submit"
-          className="block w-full bg-blue-500 hover:bg-blue-600 text-white py-2 font-semibold active:scale-95 rounded-lg transition transform duration-150"
+          className="bg-blue-500 text-white px-4 py-2 w-full rounded-lg"
         >
           Create Poll
         </button>
       </form>
 
-      {/* Polls List */}
+      {/* Poll List */}
       <div className="space-y-4 max-w-2xl w-full mb-10">
         {polls.map((poll) => (
           <div
             key={poll.id}
-            className="bg-white rounded-lg shadow-md p-4 border border-gray-200"
+            className={`p-4 bg-white rounded-lg shadow-md border ${
+              selectedPoll?.id === poll.id
+                ? "border-blue-500"
+                : "border-gray-200"
+            }`}
           >
-            <h3 className="text-lg font-semibold mb-3 text-gray-800">
-              {poll.question}
-            </h3>
+            <h3 className="text-lg font-semibold mb-2">{poll.question}</h3>
             <div className="space-y-2">
               {poll.options.map((opt) => (
                 <button
                   key={opt.id}
                   onClick={() => vote(opt.id)}
                   disabled={loadingVote === opt.id}
-                  className={`w-full text-left px-4 py-2 rounded-lg flex justify-between items-center transition duration-150 ${
+                  className={`w-full px-4 py-2 rounded-lg text-left flex justify-between items-center ${
                     loadingVote === opt.id
-                      ? "bg-blue-300 cursor-not-allowed"
-                      : "bg-blue-500 hover:bg-blue-600 text-white cursor-pointer"
+                      ? "bg-blue-300"
+                      : "bg-blue-500 hover:bg-blue-600 text-white"
                   }`}
                 >
-                  {opt.text}
-                  <span className="font-bold">{opt.votes_count}</span>
+                  {opt.text} <span>{opt.votes_count}</span>
                 </button>
               ))}
             </div>
 
-            <button
-              onClick={() => deletePoll(poll.id)}
-              className="mt-4 px-4 py-2 bg-red-500 hover:bg-red-600 active:scale-95 text-white rounded-lg transition transform duration-150 shadow-md cursor-pointer"
-            >
-              Delete Poll
-            </button>
+            <div className="flex gap-2 mt-4">
+              <button
+                onClick={() => setSelectedPoll(poll)}
+                className="bg-green-500 text-white px-3 py-1 rounded-lg"
+              >
+                Open Chat
+              </button>
+              <button
+                onClick={() => deletePoll(poll.id)}
+                className="bg-red-500 text-white px-3 py-1 rounded-lg"
+              >
+                Delete
+              </button>
+            </div>
           </div>
         ))}
       </div>
 
-      {/* 💬 Chat Section */}
-      <div className="w-full max-w-2xl bg-white rounded-lg shadow-md border border-gray-200 p-4 flex flex-col">
-        <h2 className="text-lg font-semibold text-gray-700 mb-3">Live Chat</h2>
-        <div className="flex-1 overflow-y-auto h-64 border p-2 rounded-lg bg-gray-50 mb-3">
-          {messages.length === 0 ? (
-            <p className="text-gray-400 text-center mt-20">
-              No messages yet. Start chatting!
-            </p>
-          ) : (
-            messages.map((msg, index) => (
-              <div
-                key={index}
-                className="bg-blue-100 px-3 py-2 rounded-lg mb-2 text-gray-800 shadow-sm"
-              >
-                {msg.text}
-              </div>
-            ))
-          )}
-        </div>
+      {/* Chat */}
+      {selectedPoll && (
+        <div className="w-full max-w-2xl bg-white rounded-lg shadow-md p-4">
+          <h2 className="text-lg font-semibold mb-3">
+            Chat for: {selectedPoll.question}
+          </h2>
+          <div className="h-64 overflow-y-auto bg-gray-50 p-2 rounded-lg mb-3">
+            {messages.length === 0 ? (
+              <p className="text-gray-400 text-center mt-20">No messages yet.</p>
+            ) : (
+              messages.map((msg, i) => (
+                <div
+                  key={i}
+                  className="bg-blue-100 px-3 py-2 rounded-lg mb-2 shadow-sm"
+                >
+                  <span className="font-semibold text-blue-700">{msg.user}: </span>
+                  {msg.text}
+                </div>
+              ))
+            )}
+          </div>
 
-        <form onSubmit={sendMessage} className="flex gap-2">
-          <input
-            type="text"
-            placeholder="Type your message..."
-            value={chatInput}
-            onChange={(e) => setChatInput(e.target.value)}
-            className="flex-1 border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <button
-            type="submit"
-            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg active:scale-95 transition"
-          >
-            Send
-          </button>
-        </form>
-      </div>
+          <form onSubmit={sendMessage} className="flex gap-2">
+            <input
+              type="text"
+              placeholder="Type a message..."
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              className="flex-1 border rounded-lg px-3 py-2"
+            />
+            <button
+              type="submit"
+              className="bg-blue-500 text-white px-4 py-2 rounded-lg"
+            >
+              Send
+            </button>
+          </form>
+        </div>
+      )}
     </div>
   );
 }

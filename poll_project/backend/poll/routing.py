@@ -2,5 +2,9 @@ from django.urls import re_path
 from . import consumers
 
 websocket_urlpatterns = [
-    re_path(r"ws/polls/$", consumers.PollConsumer.as_asgi()),
+    # Global updates (create/delete polls)
+    re_path(r"ws/polls/$", consumers.GlobalPollConsumer.as_asgi()),
+
+    # Chat & vote updates for a specific poll
+    re_path(r"ws/chat/(?P<poll_id>\d+)/$", consumers.PollConsumer.as_asgi()),
 ]
