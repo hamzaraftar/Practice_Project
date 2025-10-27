@@ -54,7 +54,8 @@ function App() {
   // 💬 Fetch previous chat messages for a poll
   const fetchChatMessages = async (pollId) => {
     try {
-      const res = await axios.get(`http://localhost:8000/chat/messages/${pollId}/`);
+      const res = await axios.get(`http://localhost:8000/api/chat/messages/${pollId}/`);
+
 
       setMessages(res.data);
     } catch (err) {
