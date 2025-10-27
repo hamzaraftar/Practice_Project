@@ -177,7 +177,7 @@ function App() {
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col">
       <h1 className="text-4xl font-bold text-center text-gray-800 mt-6 mb-8">
-        Live Polling & Chat App
+        <span className="text-blue-700">Live Polling</span> & Chat App
       </h1>
 
       <div className="flex flex-col lg:flex-row gap-6 mx-auto w-full max-w-7xl">
@@ -205,13 +205,13 @@ function App() {
             <button
               type="button"
               onClick={addOption}
-              className="bg-gray-200 px-3 py-1 rounded-lg mb-4"
+              className="bg-gray-200 px-3 py-1 rounded-lg mb-4 cursor-pointer"
             >
               + Add Option
             </button>
             <button
               type="submit"
-              className="bg-blue-500 text-white px-4 py-2 w-full rounded-lg"
+              className="bg-blue-500 text-white px-4 py-2 w-full rounded-lg cursor-pointer"
             >
               Create Poll
             </button>
@@ -234,7 +234,7 @@ function App() {
                     key={opt.id}
                     onClick={() => vote(opt.id)}
                     disabled={loadingVote === opt.id}
-                    className={`w-full px-4 py-2 rounded-lg text-left flex justify-between items-center ${
+                    className={`w-full px-4 py-2 rounded-lg cursor-pointer text-left flex justify-between items-center ${
                       loadingVote === opt.id
                         ? "bg-blue-300"
                         : "bg-blue-500 hover:bg-blue-600 text-white"
@@ -247,13 +247,13 @@ function App() {
                 <div className="flex gap-2 mt-2">
                   <button
                     onClick={() => setSelectedPoll(poll)}
-                    className="bg-green-500 text-white px-3 py-1 rounded-lg"
+                    className="bg-green-500 text-white px-3 py-1 cursor-pointer rounded-lg"
                   >
                     Open Chat
                   </button>
                   <button
                     onClick={() => deletePoll(poll.id)}
-                    className="bg-red-500 text-white px-3 py-1 rounded-lg"
+                    className="bg-red-500 text-white px-3 cursor-pointer py-1 rounded-lg"
                   >
                     Delete
                   </button>
@@ -267,7 +267,7 @@ function App() {
         {selectedPoll && (
           <div className="flex-1 flex flex-col bg-white p-6 shadow-md rounded-lg">
             <h2 className="text-2xl font-semibold mb-4">
-              Chat for: {selectedPoll.question}
+              <span className="font-semibold text-blue-600">Chat for:</span> {selectedPoll.question}
             </h2>
 
             {/* Chat messages */}
@@ -281,7 +281,7 @@ function App() {
                   <div
                     key={i}
                     className={`flex ${
-                      msg.user === "User" ? "justify-end" : "justify-start"
+                      msg.user === "User" ? "justify-start" : "justify-end"
                     } mb-2`}
                   >
                     <div
@@ -309,7 +309,7 @@ function App() {
               />
               <button
                 type="submit"
-                className="bg-blue-500 text-white px-4 py-2 rounded-lg"
+                className="bg-blue-500 text-white px-4 cursor-pointer py-2 rounded-lg"
               >
                 Send
               </button>
