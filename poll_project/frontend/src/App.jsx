@@ -18,7 +18,7 @@ function App() {
       ? "localhost:8000"
       : window.location.host;
 
-  // 📦 Fetch all polls
+  //  Fetch all polls
   const fetchPolls = async () => {
     try {
       const res = await axios.get("http://localhost:8000/api/polls/");
@@ -32,11 +32,11 @@ function App() {
     fetchPolls();
   }, []);
 
-  // 🌍 Global WebSocket connection
+  //  Global WebSocket connection
   useEffect(() => {
     const ws = new WebSocket(`${wsScheme}://${host}/ws/polls/`);
     ws.onopen = () => {
-      console.log("✅ Global WS connected");
+      console.log("Global WS connected");
       setGlobalSocket(ws);
     };
 
@@ -47,11 +47,11 @@ function App() {
       }
     };
 
-    ws.onclose = () => console.log("❌ Global WS closed");
+    ws.onclose = () => console.log(" Global WS closed");
     return () => ws.close();
   }, []);
 
-  // 💬 Fetch previous chat messages for a poll
+  // Fetch previous chat messages for a poll
   const fetchChatMessages = async (pollId) => {
     try {
       const res = await axios.get(`http://localhost:8000/api/chat/messages/${pollId}/`);
@@ -63,7 +63,7 @@ function App() {
     }
   };
 
-  // 💬 Per-poll WebSocket for chat & votes
+  // Per-poll WebSocket for chat & votes
   useEffect(() => {
     if (!selectedPoll) {
       setMessages([]);
@@ -78,7 +78,7 @@ function App() {
     const cs = new WebSocket(`${wsScheme}://${host}/ws/chat/${selectedPoll.id}/`);
 
     cs.onopen = () => {
-      console.log(`✅ Connected to Poll Chat #${selectedPoll.id}`);
+      console.log(` Connected to Poll Chat #${selectedPoll.id}`);
       setChatSocket(cs);
     };
 
@@ -91,11 +91,11 @@ function App() {
       }
     };
 
-    cs.onclose = () => console.log("❌ Chat WS closed");
+    cs.onclose = () => console.log(" Chat WS closed");
     return () => cs.close();
   }, [selectedPoll]);
 
-  // 🧱 Create Poll
+  //  Create Poll
   const createPoll = async (e) => {
     e.preventDefault();
     if (!question.trim() || options.some((o) => !o.trim())) {
@@ -124,7 +124,7 @@ function App() {
     }
   };
 
-  // 🗳 Vote
+  // Vote
   const vote = async (optionId) => {
     setLoadingVote(optionId);
     try {
@@ -139,7 +139,7 @@ function App() {
     }
   };
 
-  // 🗑 Delete Poll
+  // Delete Poll
   const deletePoll = async (pollId) => {
     try {
       await axios.delete(`http://localhost:8000/api/polls/${pollId}/delete/`);
@@ -157,7 +157,7 @@ function App() {
     }
   };
 
-  // 💬 Send chat message
+  // Send chat message
   const sendMessage = (e) => {
     e.preventDefault();
     if (!chatInput.trim() || !chatSocket) return;
