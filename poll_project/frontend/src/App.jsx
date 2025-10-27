@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import VoteChart from "./Component/VoteChart";
 
 function App() {
   const [polls, setPolls] = useState([]);
@@ -18,7 +19,7 @@ function App() {
       ? "localhost:8000"
       : window.location.host;
 
-  //  Fetch all polls
+  // Fetch all polls
   const fetchPolls = async () => {
     try {
       const res = await axios.get("http://localhost:8000/api/polls/");
@@ -32,7 +33,7 @@ function App() {
     fetchPolls();
   }, []);
 
-  //  Global WebSocket connection
+  // Global WebSocket connection
   useEffect(() => {
     const ws = new WebSocket(`${wsScheme}://${host}/ws/polls/`);
     ws.onopen = () => {
@@ -47,16 +48,16 @@ function App() {
       }
     };
 
-    ws.onclose = () => console.log(" Global WS closed");
+    ws.onclose = () => console.log("Global WS closed");
     return () => ws.close();
   }, []);
 
   // Fetch previous chat messages for a poll
   const fetchChatMessages = async (pollId) => {
     try {
-      const res = await axios.get(`http://localhost:8000/api/chat/messages/${pollId}/`);
-
-
+      const res = await axios.get(
+        `http://localhost:8000/api/chat/messages/${pollId}/`
+      );
       setMessages(res.data);
     } catch (err) {
       console.error("Error fetching chat messages:", err);
@@ -71,14 +72,14 @@ function App() {
       return;
     }
 
-    // First, fetch existing chat history
+    // Fetch existing chat history first
     fetchChatMessages(selectedPoll.id);
 
     // Then, connect WebSocket
     const cs = new WebSocket(`${wsScheme}://${host}/ws/chat/${selectedPoll.id}/`);
 
     cs.onopen = () => {
-      console.log(` Connected to Poll Chat #${selectedPoll.id}`);
+      console.log(`Connected to Poll Chat #${selectedPoll.id}`);
       setChatSocket(cs);
     };
 
@@ -91,11 +92,11 @@ function App() {
       }
     };
 
-    cs.onclose = () => console.log(" Chat WS closed");
+    cs.onclose = () => console.log("Chat WS closed");
     return () => cs.close();
   }, [selectedPoll]);
 
-  //  Create Poll
+  // Create Poll
   const createPoll = async (e) => {
     e.preventDefault();
     if (!question.trim() || options.some((o) => !o.trim())) {
@@ -180,7 +181,7 @@ function App() {
       </h1>
 
       <div className="flex flex-col lg:flex-row gap-6 mx-auto w-full max-w-7xl">
-        {/* Poll Section */}
+        {/* Poll Section - Left Side */}
         <div className="flex-1 bg-white p-6 shadow-md rounded-lg">
           <h2 className="text-2xl font-semibold mb-4">Create New Poll</h2>
           <form onSubmit={createPoll} className="mb-6">
@@ -262,13 +263,15 @@ function App() {
           </div>
         </div>
 
-        {/* Chat Section */}
+        {/* Chat Section - Right Side */}
         {selectedPoll && (
-          <div className="flex-1 bg-white p-6 shadow-md rounded-lg">
+          <div className="flex-1 flex flex-col bg-white p-6 shadow-md rounded-lg">
             <h2 className="text-2xl font-semibold mb-4">
               Chat for: {selectedPoll.question}
             </h2>
-            <div className="h-96 overflow-y-auto bg-gray-50 border p-4 rounded-lg mb-4">
+
+            {/* Chat messages */}
+            <div className="flex-1 overflow-y-auto bg-gray-50 border p-4 rounded-lg mb-4">
               {messages.length === 0 ? (
                 <p className="text-gray-400 text-center mt-32">
                   No messages yet.
@@ -295,7 +298,8 @@ function App() {
               )}
             </div>
 
-            <form onSubmit={sendMessage} className="flex gap-2">
+            {/* Chat input */}
+            <form onSubmit={sendMessage} className="flex gap-2 mb-4">
               <input
                 type="text"
                 placeholder="Type a message..."
@@ -310,6 +314,11 @@ function App() {
                 Send
               </button>
             </form>
+
+            {/* Chart Section below chat */}
+            <div className="mt-6">
+              <VoteChart poll={selectedPoll} />
+            </div>
           </div>
         )}
       </div>
