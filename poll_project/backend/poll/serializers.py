@@ -1,6 +1,5 @@
 from rest_framework import serializers
-from .models import Poll, Option, Vote,ChatMessage
-
+from .models import Poll, Option, Vote
 class OptionSerializer(serializers.ModelSerializer):
     votes_count = serializers.IntegerField(source='votes.count', read_only=True)
     class Meta:

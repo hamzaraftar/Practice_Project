@@ -3,12 +3,12 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 from .models import Poll, ChatMessage
 
-# 🌍 Global consumer for poll creation, deletion, and vote updates
+#  Global consumer for poll creation, deletion, and vote updates
 class GlobalPollConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         await self.channel_layer.group_add("polls_global", self.channel_name)
         await self.accept()
-        print("✅ Global WS connected")
+        print(" Global WS connected")
 
     async def disconnect(self, close_code):
         await self.channel_layer.group_discard("polls_global", self.channel_name)
@@ -18,7 +18,7 @@ class GlobalPollConsumer(AsyncWebsocketConsumer):
         data = json.loads(text_data)
         msg_type = data.get("type")
 
-        # ✅ Broadcast create/delete/vote updates to all clients
+        # Broadcast create/delete/vote updates to all clients
         if msg_type in ["poll_created", "poll_deleted", "vote_update"]:
             await self.channel_layer.group_send(
                 "polls_global",
@@ -31,7 +31,7 @@ class GlobalPollConsumer(AsyncWebsocketConsumer):
         }))
 
 
-# 💬 Per-poll consumer (chat + vote)
+# Per-poll consumer (chat + vote)
 class PollConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.poll_id = self.scope['url_route']['kwargs']['poll_id']
@@ -39,24 +39,24 @@ class PollConsumer(AsyncWebsocketConsumer):
 
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
         await self.accept()
-        print(f"✅ Connected to Poll Chat #{self.poll_id}")
+        print(f" Connected to Poll Chat #{self.poll_id}")
 
     async def disconnect(self, close_code):
         await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
-        print(f"❌ Disconnected from poll {self.poll_id}")
+        print(f"Disconnected from poll {self.poll_id}")
 
     async def receive(self, text_data):
         data = json.loads(text_data)
         msg_type = data.get("type")
 
-        # 🗳 Vote updates
+        #  Vote updates
         if msg_type == "vote_update":
             await self.channel_layer.group_send(
                 self.room_group_name,
                 {"type": "vote_broadcast"}
             )
 
-        # 💬 Chat messages
+        #  Chat messages
         elif msg_type == "chat_message":
             message = data.get("text", "")
             user = data.get("user", "Anonymous")

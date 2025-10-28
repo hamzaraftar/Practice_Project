@@ -2,7 +2,7 @@
 from rest_framework import  status
 from rest_framework.response import Response
 from .models import Poll, Option, ChatMessage
-from .serializers import PollSerializer, VoteSerializer, ChatMessageSerializer
+from .serializers import PollSerializer, VoteSerializer
 from rest_framework.views import APIView
 
 # for listing and creating polls
