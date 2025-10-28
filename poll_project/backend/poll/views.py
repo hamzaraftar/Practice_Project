@@ -69,20 +69,34 @@ class ChatMessageView(APIView):
             return Response({"error": "Poll not found"}, status=status.HTTP_404_NOT_FOUND)
 
         messages = ChatMessage.objects.filter(poll=poll).order_by('timestamp')
-        serializer = ChatMessageSerializer(messages, many=True)
-        return Response(serializer.data)
+        serialized_messages = [
+            {
+                "user": msg.user,
+                "text": msg.content,
+                "timestamp": msg.timestamp
+            } for msg in messages
+        ]
+        return Response(serialized_messages)
 
     def post(self, request, poll_id):
+        user = request.data.get("user")
+        text = request.data.get("text")
+
+        if not user or not text:
+            return Response(
+                {"error": "User and text are required."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         try:
             poll = Poll.objects.get(id=poll_id)
         except Poll.DoesNotExist:
             return Response({"error": "Poll not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        data = request.data.copy()
-        data["poll"] = poll.id  # attach poll to message data
-
-        serializer = ChatMessageSerializer(data=data)
-        if serializer.is_valid():
-            serializer.save(poll=poll)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        chat_message = ChatMessage.objects.create(poll=poll, user=user, content=text)
+        serialized_message = {
+            "user": chat_message.user,
+            "text": chat_message.content,
+            "timestamp": chat_message.timestamp
+        }
+        return Response(serialized_message, status=status.HTTP_201_CREATED)

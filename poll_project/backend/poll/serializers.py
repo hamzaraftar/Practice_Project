@@ -18,7 +18,3 @@ class VoteSerializer(serializers.ModelSerializer):
         model = Vote
         fields = ['id', 'option']
 
-class ChatMessageSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ChatMessage
-        fields = ['id', 'user', 'content', 'timestamp']
