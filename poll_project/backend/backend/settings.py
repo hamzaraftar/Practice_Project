@@ -43,10 +43,11 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'poll',
     'rest_framework',
     'corsheaders',
     'channels',
+    'rest_framework_simplejwt',
+    'poll',
 ]
 
 # Channels
@@ -57,6 +58,15 @@ CHANNEL_LAYERS = {
         "BACKEND": "channels.layers.InMemoryChannelLayer"
     }
 }
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    )
+}
+
+AUTH_USER_MODEL = 'poll.CustomUser'
+
 
 
 MIDDLEWARE = [

@@ -1,4 +1,6 @@
 from django.db import models
+from django.contrib.auth.models import AbstractUser
+
 
 class Poll(models.Model):
     question = models.CharField(max_length=255)
@@ -17,3 +19,12 @@ class ChatMessage(models.Model):
     user = models.CharField(max_length=100)
     content = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
+
+
+
+class CustomUser(AbstractUser):
+    is_admin = models.BooleanField(default=False)
+    is_regular = models.BooleanField(default=True)
+
+    def __str__(self):
+        return self.username
