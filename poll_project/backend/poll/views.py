@@ -11,10 +11,15 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 
 # 🗳 For listing and creating polls
 class PollListCreateView(APIView):
+    """
+    GET: Anyone can view polls
+    POST: Only admins (is_staff or is_admin=True) can create polls
+    """
+
     def get_permissions(self):
         if self.request.method == 'GET':
-            return [AllowAny()]  # anyone can view polls
-        return [IsAuthenticated()]  # only logged-in users can create (we'll check admin next)
+            return [AllowAny()]  # public access
+        return [IsAuthenticated()]  # must be logged in to create
 
     def get(self, request):
         polls = Poll.objects.all()
@@ -22,28 +27,42 @@ class PollListCreateView(APIView):
         return Response(serializer.data)
 
     def post(self, request):
-        # Check if user is admin
-        if not request.user.is_staff:
+        user = request.user
+        print("DEBUG USER:", user.username, user.is_staff, getattr(user, "is_admin", None))  # check this in terminal
+
+        # ✅ Check for admin permission
+        if not (user.is_staff or getattr(user, "is_admin", False)):
             return Response(
-                {"error": "You do not have permission to create polls."},
+                {"error": "You do not have permission to create polls. Only admins can create polls."},
                 status=status.HTTP_403_FORBIDDEN
             )
 
-        question = request.data.get('question')
-        options = request.data.get('options', [])
+        question = request.data.get("question")
+        options = request.data.get("options", [])
 
-        if not question or not options:
+        # ✅ Validate data
+        if not question:
             return Response(
-                {"error": "Question and options are required."},
+                {"error": "Question field is required."},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        if not options or not isinstance(options, list):
+            return Response(
+                {"error": "Options must be a list of strings."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # ✅ Create poll and options
         poll = Poll.objects.create(question=question)
         for text in options:
             Option.objects.create(poll=poll, text=text)
 
         serializer = PollSerializer(poll)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(
+            {"message": "Poll created successfully.", "poll": serializer.data},
+            status=status.HTTP_201_CREATED
+        )
 
 
 # 🧾 For retrieving poll details

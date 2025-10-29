@@ -24,26 +24,35 @@ class VoteSerializer(serializers.ModelSerializer):
 
 
 User = get_user_model()
-
 class RegisterSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, required=True, validators=[validate_password])
-    password2 = serializers.CharField(write_only=True, required=True)
+    password2 = serializers.CharField(write_only=True)
 
     class Meta:
         model = User
-        fields = ('username', 'password', 'password2', 'is_admin', 'is_regular')
+        fields = ['username', 'password', 'password2', 'is_admin', 'is_regular']
+        extra_kwargs = {'password': {'write_only': True}}
 
     def validate(self, attrs):
         if attrs['password'] != attrs['password2']:
-            raise serializers.ValidationError({"password": "Passwords didn't match."})
+            raise serializers.ValidationError({"error": "Passwords do not match"})
         return attrs
 
     def create(self, validated_data):
-        user = User(
-            username=validated_data['username'],
-            is_admin=validated_data.get('is_admin', False),
-            is_regular=validated_data.get('is_regular', True),
-        )
-        user.set_password(validated_data['password'])
+        password = validated_data.pop('password')
+        validated_data.pop('password2')
+
+        # ✅ explicitly get is_admin and is_regular
+        is_admin = validated_data.pop('is_admin', False)
+        is_regular = validated_data.pop('is_regular', True)
+
+        user = User(**validated_data)
+        user.set_password(password)
+        user.is_admin = is_admin
+        user.is_regular = is_regular
+
+        # ✅ if you also have user.is_staff for admin
+        if is_admin:
+            user.is_staff = True
+
         user.save()
         return user
