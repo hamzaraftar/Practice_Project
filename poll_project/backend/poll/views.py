@@ -173,3 +173,17 @@ class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = RegisterSerializer
     permission_classes = [permissions.AllowAny]
+
+
+
+class UserDetailView(APIView):
+    permission_classes = [IsAuthenticated]  # Only logged-in users can access
+
+    def get(self, request):
+        user = request.user
+        return Response({
+            "username": user.username,
+            "is_admin": getattr(user, "is_admin", False),
+            "is_regular": getattr(user, "is_regular", False),
+            "is_staff": user.is_staff,  # optional: for Django admin check
+        })
