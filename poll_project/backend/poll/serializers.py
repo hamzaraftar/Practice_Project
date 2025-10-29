@@ -35,11 +35,11 @@ class RegisterSerializer(serializers.ModelSerializer):
         extra_kwargs = {'password': {'write_only': True}}
 
     def validate(self, attrs):
-        # ✅ Password match validation
+        # Password match validation
         if attrs['password'] != attrs['password2']:
             raise serializers.ValidationError({"error": "Passwords do not match"})
 
-        # ✅ Make sure one of them is true (or default)
+        #  Make sure one of them is true (or default)
         if attrs.get('is_admin') and attrs.get('is_regular'):
             raise serializers.ValidationError({"error": "User cannot be both admin and regular."})
 
@@ -49,23 +49,23 @@ class RegisterSerializer(serializers.ModelSerializer):
         password = validated_data.pop('password')
         validated_data.pop('password2')
 
-        # ✅ Extract roles safely
+        #Extract roles safely
         is_admin = validated_data.pop('is_admin', False)
         is_regular = validated_data.pop('is_regular', True)
 
-        # ✅ Always ensure one role is true
+        #Always ensure one role is true
         if is_admin:
             is_regular = False
         else:
             is_regular = True
 
-        # ✅ Create user instance
+        # Create user instance
         user = User(**validated_data)
         user.set_password(password)
         user.is_admin = is_admin
         user.is_regular = is_regular
 
-        # ✅ Mark admin as staff for permission classes
+        # Mark admin as staff for permission classes
         user.is_staff = is_admin
         user.save()
 
