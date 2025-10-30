@@ -13,10 +13,16 @@ class OptionSerializer(serializers.ModelSerializer):
 
 class PollSerializer(serializers.ModelSerializer):
     options = OptionSerializer(many=True, read_only=True)
+    created_by = serializers.SerializerMethodField()
+
     class Meta:
         model = Poll
-        fields = ['id', 'question', 'created_at', 'options']
+        fields = ['id', 'question', 'created_at', 'created_by', 'options']
 
+    def get_created_by(self, obj):       
+        return obj.created_by.username if obj.created_by else "Unknown"
+    
+    
 class VoteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Vote

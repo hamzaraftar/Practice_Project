@@ -9,7 +9,7 @@ from .permissions import IsAdminUserCustom, IsAuthenticatedUser
 from rest_framework.permissions import IsAuthenticated, AllowAny
 
 
-# 🗳 For listing and creating polls
+#For listing and creating polls
 class PollListCreateView(APIView):
     """
     GET: Anyone can view polls
@@ -18,43 +18,40 @@ class PollListCreateView(APIView):
 
     def get_permissions(self):
         if self.request.method == 'GET':
-            return [AllowAny()]  # public access
-        return [IsAuthenticated()]  # must be logged in to create
+            return [AllowAny()]  # anyone can view polls
+        return [IsAuthenticated()]  # must be logged in to create polls
 
     def get(self, request):
-        polls = Poll.objects.all()
+        polls = Poll.objects.all().order_by('-created_at')
         serializer = PollSerializer(polls, many=True)
-        return Response(serializer.data)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     def post(self, request):
         user = request.user
-        print("DEBUG USER:", user.username, user.is_staff, getattr(user, "is_admin", None))  # check this in terminal
 
-        # ✅ Check for admin permission
-        if not (user.is_staff or getattr(user, "is_admin", False)):
+        # Debug info for server console
+        print(f"DEBUG USER -> username: {user.username}, is_staff: {user.is_staff}, is_admin: {getattr(user, 'is_admin', None)}")
+
+        # Check admin permissions
+        if not (user.is_staff or getattr(user, 'is_admin', False)):
             return Response(
                 {"error": "You do not have permission to create polls. Only admins can create polls."},
                 status=status.HTTP_403_FORBIDDEN
             )
 
-        question = request.data.get("question")
-        options = request.data.get("options", [])
+        question = request.data.get('question')
+        options = request.data.get('options', [])
 
-        # ✅ Validate data
+        # Validate data
         if not question:
-            return Response(
-                {"error": "Question field is required."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
+            return Response({"error": "Question field is required."}, status=status.HTTP_400_BAD_REQUEST)
         if not options or not isinstance(options, list):
-            return Response(
-                {"error": "Options must be a list of strings."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"error": "Options must be a list of strings."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # ✅ Create poll and options
-        poll = Poll.objects.create(question=question)
+        # ✅ Create poll and link to current admin user
+        poll = Poll.objects.create(question=question, created_by=user)
+
+        # Create related options
         for text in options:
             Option.objects.create(poll=poll, text=text)
 
@@ -64,8 +61,7 @@ class PollListCreateView(APIView):
             status=status.HTTP_201_CREATED
         )
 
-
-# 🧾 For retrieving poll details
+#For retrieving poll details
 class PollDetailView(APIView):
     permission_classes = [IsAuthenticatedUser]
 
@@ -79,7 +75,7 @@ class PollDetailView(APIView):
         return Response(serializer.data)
 
 
-# ❌ For deleting a poll
+#For deleting a poll
 class PollDeleteView(APIView):
     permission_classes = [IsAdminUserCustom]
 
@@ -111,7 +107,7 @@ class PollDeleteView(APIView):
             status=status.HTTP_204_NO_CONTENT
         )    
 
-# ✅ For creating votes (any authenticated user can vote)
+# For creating votes (any authenticated user can vote)
 class VoteCreateView(APIView):
     permission_classes = [IsAuthenticatedUser]
 
@@ -123,7 +119,7 @@ class VoteCreateView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-# 💬 For chat messages
+#  For chat messages
 class ChatMessageView(APIView):
     permission_classes = [IsAuthenticatedUser]
 
@@ -144,7 +140,7 @@ class ChatMessageView(APIView):
         return Response(serialized_messages)
 
     def post(self, request, poll_id):
-        user = request.user.username  # ✅ use authenticated user instead of request.data["user"]
+        user = request.user.username  # use authenticated user instead of request.data["user"]
         text = request.data.get("text")
 
         if not text:
