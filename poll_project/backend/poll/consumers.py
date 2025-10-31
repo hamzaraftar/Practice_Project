@@ -1,18 +1,21 @@
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
-from .models import Poll, ChatMessage
+from .models import CustomUser, Poll, ChatMessage
 
+
+# --------------------------------------------------------
 #  Global consumer for poll creation, deletion, and vote updates
+# --------------------------------------------------------
 class GlobalPollConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         await self.channel_layer.group_add("polls_global", self.channel_name)
         await self.accept()
-        print(" Global WS connected")
+        print("🌐 Global WS connected")
 
     async def disconnect(self, close_code):
         await self.channel_layer.group_discard("polls_global", self.channel_name)
-        print(" Global WS disconnected")
+        print("❌ Global WS disconnected")
 
     async def receive(self, text_data):
         data = json.loads(text_data)
@@ -31,7 +34,9 @@ class GlobalPollConsumer(AsyncWebsocketConsumer):
         }))
 
 
-# Per-poll consumer (chat + vote)
+# --------------------------------------------------------
+#  Per-poll consumer (chat + vote)
+# --------------------------------------------------------
 class PollConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.poll_id = self.scope['url_route']['kwargs']['poll_id']
@@ -39,33 +44,37 @@ class PollConsumer(AsyncWebsocketConsumer):
 
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
         await self.accept()
-        print(f" Connected to Poll Chat #{self.poll_id}")
+        print(f"✅ Connected to Poll Chat #{self.poll_id}")
 
     async def disconnect(self, close_code):
         await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
-        print(f"Disconnected from poll {self.poll_id}")
+        print(f"❌ Disconnected from poll {self.poll_id}")
 
     async def receive(self, text_data):
         data = json.loads(text_data)
         msg_type = data.get("type")
 
-        #  Vote updates
+        # ---------- Handle vote updates ----------
         if msg_type == "vote_update":
             await self.channel_layer.group_send(
                 self.room_group_name,
                 {"type": "vote_broadcast"}
             )
 
-        #  Chat messages
+        # ---------- Handle chat messages ----------
         elif msg_type == "chat_message":
             message = data.get("text", "")
-            user = data.get("user", "Anonymous")
+            username = data.get("user", "Anonymous")  # username string from frontend
 
             if message:
-                await self.save_message(user, message)
+                await self.save_message(username, message)
                 await self.channel_layer.group_send(
                     self.room_group_name,
-                    {"type": "chat_broadcast", "user": user, "text": message}
+                    {
+                        "type": "chat_broadcast",
+                        "user": username,
+                        "text": message,
+                    }
                 )
 
     async def chat_broadcast(self, event):
@@ -80,7 +89,23 @@ class PollConsumer(AsyncWebsocketConsumer):
             "type": "vote_update",
         }))
 
+    # ---------- Save chat message in DB ----------
     @database_sync_to_async
-    def save_message(self, user, text):
-        poll = Poll.objects.get(id=self.poll_id)
-        ChatMessage.objects.create(poll=poll, user=user, content=text)
+    def save_message(self, username, text):
+        try:
+            poll = Poll.objects.get(id=self.poll_id)
+        except Poll.DoesNotExist:
+            print(f"Poll #{self.poll_id} does not exist.")
+            return
+
+        try:
+            user = CustomUser.objects.get(username=username)
+        except CustomUser.DoesNotExist:
+            print(f"User '{username}' does not exist. Skipping message save.")
+            return
+
+        ChatMessage.objects.create(
+            poll=poll,
+            user=user,  # ✅ Proper CustomUser instance
+            content=text
+        )
