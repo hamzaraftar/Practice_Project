@@ -11,18 +11,18 @@ class PollConsumer(AsyncWebsocketConsumer):
             self.channel_name
         )
         await self.accept()
-        print("✅ WebSocket connected")
+        print(" WebSocket connected")
 
     async def disconnect(self, close_code):
         await self.channel_layer.group_discard(
             self.room_group_name,
             self.channel_name
         )
-        print("❌ WebSocket disconnected")
+        print(" WebSocket disconnected")
 
     async def receive(self, text_data):
         data = json.loads(text_data)
-        print("📩 Received:", data)
+        print(" Received:", data)
 
         # Broadcast the event to everyone in the group
         await self.channel_layer.group_send(

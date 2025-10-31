@@ -114,7 +114,7 @@ class RegisterView(generics.CreateAPIView):
 
 # User detail view
 class UserDetailView(APIView):
-    permission_classes = [IsAdminUserCustom]  # Only logged-in users can access
+    permission_classes = [IsAdminUserCustom]  # Only Admin users can access
 
     def get(self, request):
         user = request.user

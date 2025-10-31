@@ -12,7 +12,7 @@ class GlobalPollConsumer(AsyncWebsocketConsumer):
 
     async def disconnect(self, close_code):
         await self.channel_layer.group_discard("polls_global", self.channel_name)
-        print("❌ Global WS disconnected")
+        print(" Global WS disconnected")
 
     async def receive(self, text_data):
         data = json.loads(text_data)
