@@ -1,9 +1,6 @@
 from rest_framework import serializers
-from .models import Poll, Option, Vote
+from .models import Poll, Option, Vote, ChatMessage
 from django.contrib.auth import get_user_model
-from django.contrib.auth.password_validation import validate_password
-
-
 
 class OptionSerializer(serializers.ModelSerializer):
     votes_count = serializers.IntegerField(source='votes.count', read_only=True)
@@ -14,15 +11,13 @@ class OptionSerializer(serializers.ModelSerializer):
 class PollSerializer(serializers.ModelSerializer):
     options = OptionSerializer(many=True, read_only=True)
     created_by = serializers.SerializerMethodField()
-
     class Meta:
         model = Poll
-        fields = ['id', 'question', 'created_at', 'created_by', 'options']
+        fields = ['id', 'question',  'created_by', 'created_at', 'options']
 
     def get_created_by(self, obj):       
         return obj.created_by.username if obj.created_by else "Unknown"
-    
-    
+        
 class VoteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Vote
@@ -40,15 +35,13 @@ class RegisterSerializer(serializers.ModelSerializer):
         fields = ['username', 'email', 'password', 'password2', 'is_admin', 'is_regular']
         extra_kwargs = {'password': {'write_only': True}}
 
-    def validate(self, attrs):
-        # Password match validation
+    def validate(self, attrs):       
         if attrs['password'] != attrs['password2']:
             raise serializers.ValidationError({"error": "Passwords do not match"})
 
-        #  Make sure one of them is true (or default)
+        # Make sure one of them is true (or default)
         if attrs.get('is_admin') and attrs.get('is_regular'):
             raise serializers.ValidationError({"error": "User cannot be both admin and regular."})
-
         return attrs
 
     def create(self, validated_data):
@@ -76,3 +69,11 @@ class RegisterSerializer(serializers.ModelSerializer):
         user.save()
 
         return user
+
+class ChatMessageSerializer(serializers.ModelSerializer):    
+    username = serializers.CharField(source='user.username', read_only=True)
+    email = serializers.EmailField(source='user.email', read_only=True)
+    class Meta:
+        model = ChatMessage
+        fields = ['id', 'poll', 'user', 'username', 'email', 'content', 'timestamp']
+        read_only_fields = ['id', 'timestamp', 'username', 'email']
