@@ -339,7 +339,9 @@ export default function Home() {
                     : "border-gray-200"
                 }`}
               >
-                <h3 className="font-semibold mb-2">{poll.question}</h3>
+                <h3 className="font-semibold mb-2">{poll.question} </h3>
+                <span className="">(Created by {poll.created_by})</span>
+                <div className="text-sm text-gray-500">(Created at {new Date(poll.created_at).toLocaleString()})</div>
 
                 <div className="space-y-2">
                   {poll.options.map((opt) => (
@@ -417,7 +419,9 @@ export default function Home() {
                       <div
                         className={`max-w-xs px-4 py-2 rounded-2xl shadow 
       ${
-        m.username === getUsername() ? "bg-blue-500 text-white" : "bg-gray-200 text-gray-800"
+        m.username === getUsername()
+          ? "bg-blue-500 text-white"
+          : "bg-gray-200 text-gray-800"
       }`}
                       >
                         <strong className="block text-xs  mb-1  first-letter:uppercase ">
