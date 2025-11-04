@@ -71,9 +71,10 @@ class RegisterSerializer(serializers.ModelSerializer):
         return user
 
 class ChatMessageSerializer(serializers.ModelSerializer):    
-    username = serializers.CharField(source='user.username', read_only=True)
+    username = serializers.CharField(source="user.username", read_only=True)
     email = serializers.EmailField(source='user.email', read_only=True)
+    is_admin = serializers.BooleanField(source='user.is_admin', read_only=True)
     class Meta:
         model = ChatMessage
-        fields = ['id', 'poll', 'user', 'username', 'email', 'content', 'timestamp']
+        fields = ['id', 'poll', 'user', 'username', 'email', 'is_admin', 'content', 'timestamp']
         read_only_fields = ['id', 'timestamp', 'username', 'email']
