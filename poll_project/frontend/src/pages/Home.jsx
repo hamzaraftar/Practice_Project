@@ -1,4 +1,3 @@
-// src/pages/Home.jsx
 import { useEffect, useState, useRef } from "react";
 import API from "../api/auth";
 import VoteChart from "../components/VoteChart";
@@ -35,9 +34,7 @@ export default function Home() {
       ? "localhost:8000"
       : window.location.host;
 
-  // -------------------------
-  // Helpers
-  // -------------------------
+
   const isAuthenticated = () => !!localStorage.getItem("access");
   const getUsername = () =>
     userDetails?.username || localStorage.getItem("username") || "Anonymous";
@@ -61,27 +58,24 @@ export default function Home() {
     const timestamp = raw.timestamp ?? raw.time ?? null;
     const type = raw.type ?? "chat_message";
 
-    // also include 'user' field as username (we avoid comparing internal ids)
+   
     return {
       type,
       username,
       content,
       is_admin,
       timestamp,
-      // keep raw so debugging easier
+      
       __raw: raw,
     };
   };
 
-  // -------------------------
   // Fetch polls
-  // -------------------------
   const fetchPolls = async () => {
     try {
       const res = await API.get("polls/");
       setPolls(res.data);
-    } catch (err) {
-      // if backend requires auth and returns 401, show friendly popup but don't crash
+    } catch (err) {      
       if (err?.response?.status === 401) {
         console.warn("Unauthorized while fetching polls");
       } else {
@@ -94,16 +88,13 @@ export default function Home() {
     fetchPolls();
   }, []);
 
-  // -------------------------
   // Fetch user details (if logged-in)
-  // -------------------------
   const fetchUserDetails = async () => {
     try {
       const res = await API.get("user/");
       setUserDetails(res.data);
       if (res.data?.username) localStorage.setItem("username", res.data.username);
     } catch (err) {
-      // not fatal — user may be unauthenticated
       console.warn("Could not fetch user details", err);
     }
   };
@@ -112,9 +103,7 @@ export default function Home() {
     if (isAuthenticated()) fetchUserDetails();
   }, []);
 
-  // -------------------------
   // Global WS: poll create/delete/vote notifications
-  // -------------------------
   useEffect(() => {
     let ws;
     try {
@@ -163,14 +152,13 @@ export default function Home() {
       } catch {}
       setGlobalSocket(null);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, []);
 
-  // -------------------------
+
   // Chat WS per selected poll
-  // -------------------------
+
   useEffect(() => {
-    // cleanup old socket if switching polls
     if (!selectedPoll) {
       setMessages([]);
       if (chatSocket) {
@@ -182,7 +170,7 @@ export default function Home() {
       return;
     }
 
-    // fetch chat history via REST (serializer already provides username/is_admin)
+    // fetch chat 
     const fetchHistory = async () => {
       try {
         const res = await API.get(`chat/messages/${selectedPoll.id}/`);
@@ -244,8 +232,7 @@ export default function Home() {
         cs.close();
       } catch {}
       setChatSocket(null);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    };    
   }, [selectedPoll]);
 
   // auto-scroll
@@ -253,9 +240,7 @@ export default function Home() {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // -------------------------
   // Create Poll (server checks admin)
-  // -------------------------
   const createPoll = async (e) => {
     e.preventDefault();
     if (!isAuthenticated()) {
@@ -285,9 +270,7 @@ export default function Home() {
     }
   };
 
-  // -------------------------
   // Vote
-  // -------------------------
   const vote = async (optionId) => {
     if (!isAuthenticated()) {
       openPopup("Please login to vote.");
@@ -308,9 +291,7 @@ export default function Home() {
     }
   };
 
-  // -------------------------
   // Delete poll
-  // -------------------------
   const deletePoll = async (pollId) => {
     if (!isAuthenticated()) {
       openPopup("Only admins can delete polls. Please login.");
@@ -333,9 +314,7 @@ export default function Home() {
     }
   };
 
-  // -------------------------
   // Send chat message
-  // -------------------------
   const sendMessage = (e) => {
     e.preventDefault();
     if (!isAuthenticated()) {
@@ -344,7 +323,7 @@ export default function Home() {
     }
     if (!chatInput.trim()) return;
 
-    // Backend expects { type: 'chat_message', text: '...', user: '<username>' }
+    // Backend require { type: 'chat_message', text: '...', user: '<username>' }
     const payload = {
       type: "chat_message",
       text: chatInput,
@@ -354,13 +333,11 @@ export default function Home() {
     if (chatSocket && chatSocket.readyState === WebSocket.OPEN) {
       chatSocket.send(JSON.stringify(payload));
     } else if (globalSocket && globalSocket.readyState === WebSocket.OPEN) {
-      // fallback if backend accepts global chat (include poll_id)
-      globalSocket.send(JSON.stringify({ ...payload, poll_id: selectedPoll?.id }));
+        globalSocket.send(JSON.stringify({ ...payload, poll_id: selectedPoll?.id }));
     } else {
       openPopup("No websocket connected for chat.");
     }
 
-    // optimistic UI
     setMessages((prev) => [
       ...prev,
       {
@@ -388,9 +365,7 @@ export default function Home() {
     window.location.reload();
   };
 
-  // -------------------------
   // Render
-  // -------------------------
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col">
       <div className="flex justify-between items-center max-w-7xl mx-auto w-full p-6">

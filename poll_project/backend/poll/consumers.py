@@ -4,19 +4,14 @@ from channels.db import database_sync_to_async
 from .models import CustomUser, Poll, ChatMessage
 from .serializers import ChatMessageSerializer
 
-
-# --------------------------------------------------------
 #  Global consumer (poll CRUD + vote updates)
-# --------------------------------------------------------
 class GlobalPollConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         await self.channel_layer.group_add("polls_global", self.channel_name)
-        await self.accept()
-        print("🌐 Global WS connected")
+        await self.accept()        
 
     async def disconnect(self, close_code):
-        await self.channel_layer.group_discard("polls_global", self.channel_name)
-        print("❌ Global WS disconnected")
+        await self.channel_layer.group_discard("polls_global", self.channel_name)        
 
     async def receive(self, text_data):
         data = json.loads(text_data)
@@ -33,44 +28,34 @@ class GlobalPollConsumer(AsyncWebsocketConsumer):
             "type": event["msg_type"]
         }))
 
-
-
-# --------------------------------------------------------
-#  Poll Consumer (Chat + Vote)
-# --------------------------------------------------------
+# Poll Consumer (Chat + Vote)
 class PollConsumer(AsyncWebsocketConsumer):
-
     async def connect(self):
         self.poll_id = self.scope["url_route"]["kwargs"]["poll_id"]
         self.room_group_name = f"poll_{self.poll_id}"
 
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
-        await self.accept()
-        print(f"✅ Connected to Poll Chat #{self.poll_id}")
+        await self.accept()        
 
     async def disconnect(self, close_code):
         await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
-        print(f"❌ Disconnected from Poll #{self.poll_id}")
+       
 
-
-
-    # --------------------------------------------------------
     #  Handle Messages From WebSocket
-    # --------------------------------------------------------
+
     async def receive(self, text_data):
         data = json.loads(text_data)
         msg_type = data.get("type")
 
-        # ✅ VOTE UPDATE
+        # VOTE UPDATE
         if msg_type == "vote_update":
             await self.channel_layer.group_send(
                 self.room_group_name,
                 {"type": "vote_broadcast"}
             )
 
-        # ✅ CHAT MESSAGE
+        # CHAT MESSAGE
         elif msg_type == "chat_message":
-
             # Frontend sends: { user: {username, is_admin, email}, text }
             user_data = data.get("user", {})
             username = user_data.get("username")
@@ -79,11 +64,11 @@ class PollConsumer(AsyncWebsocketConsumer):
             if not username or not text:
                 return
 
-            # ✅ Save message & get full serialized data
+            #  Save message & get full serialized data
             saved_msg = await self.save_message(username, text)
             serialized_msg = ChatMessageSerializer(saved_msg).data
 
-            # ✅ Broadcast FULL message (same structure as REST API)
+            #  Broadcast FULL message (same structure as REST API)
             await self.channel_layer.group_send(
                 self.room_group_name,
                 {
@@ -92,32 +77,20 @@ class PollConsumer(AsyncWebsocketConsumer):
                 }
             )
 
-
-
-    # --------------------------------------------------------
     #  Send message to WebSocket
-    # --------------------------------------------------------
     async def chat_broadcast(self, event):
         await self.send(text_data=json.dumps({
             "type": "chat_message",
-            **event["message"]   # ✅ send id, username, content, is_admin, timestamp
+            **event["message"]   # send id, username, content, is_admin, timestamp
         }))
 
-
-
-    # --------------------------------------------------------
     #  Send vote updates
-    # --------------------------------------------------------
     async def vote_broadcast(self, event):
         await self.send(text_data=json.dumps({
             "type": "vote_update"
         }))
 
-
-
-    # --------------------------------------------------------
     #  Save message & return created instance
-    # --------------------------------------------------------
     @database_sync_to_async
     def save_message(self, username, text):
         poll = Poll.objects.get(id=self.poll_id)
