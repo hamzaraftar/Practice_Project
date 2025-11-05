@@ -1,4 +1,5 @@
-import { useEffect, useState, useRef, use } from "react";
+// src/pages/Home.jsx
+import { useEffect, useState, useRef } from "react";
 import API from "../api/auth";
 import VoteChart from "../components/VoteChart";
 import PermissionPopup from "../components/PermissionPopup";
@@ -9,12 +10,15 @@ export default function Home() {
   const [question, setQuestion] = useState("");
   const [options, setOptions] = useState(["", ""]);
   const [loadingVote, setLoadingVote] = useState(null);
+
   const [selectedPoll, setSelectedPoll] = useState(null);
   const [globalSocket, setGlobalSocket] = useState(null);
   const [chatSocket, setChatSocket] = useState(null);
+
   const [messages, setMessages] = useState([]);
   const [chatInput, setChatInput] = useState("");
   const chatEndRef = useRef(null);
+
   const [showPopup, setShowPopup] = useState(false);
   const [popupMessage, setPopupMessage] = useState("");
   const [userDetails, setUserDetails] = useState(null);
@@ -24,18 +28,65 @@ export default function Home() {
     setShowPopup(true);
   };
 
+  // Build ws URL host/scheme reliably
   const wsScheme = window.location.protocol === "https:" ? "wss" : "ws";
   const host =
     window.location.hostname === "localhost"
       ? "localhost:8000"
       : window.location.host;
 
+  // -------------------------
+  // Helpers
+  // -------------------------
+  const isAuthenticated = () => !!localStorage.getItem("access");
+  const getUsername = () =>
+    userDetails?.username || localStorage.getItem("username") || "Anonymous";
+
+  // Normalize any incoming message (REST or WS) to the same shape
+  const normalizeMessage = (raw) => {
+    if (!raw) return null;
+
+    // REST returns { username, content, is_admin, timestamp, user, ... }
+    // WS might send { type: 'chat_message', user: '<username>' or user: {username:...}, text: '...' }
+    const username =
+      raw.username ||
+      (raw.user && typeof raw.user === "string" ? raw.user : "") ||
+      (raw.user && raw.user.username) ||
+      raw.sender ||
+      "Anonymous";
+
+    const content = raw.content ?? raw.text ?? raw.message ?? "";
+    const is_admin =
+      raw.is_admin ?? raw.isAdmin ?? (raw.user && raw.user.is_admin) ?? false;
+    const timestamp = raw.timestamp ?? raw.time ?? null;
+    const type = raw.type ?? "chat_message";
+
+    // also include 'user' field as username (we avoid comparing internal ids)
+    return {
+      type,
+      username,
+      content,
+      is_admin,
+      timestamp,
+      // keep raw so debugging easier
+      __raw: raw,
+    };
+  };
+
+  // -------------------------
+  // Fetch polls
+  // -------------------------
   const fetchPolls = async () => {
     try {
-      const res = await API.get("polls/"); // public endpoint
+      const res = await API.get("polls/");
       setPolls(res.data);
     } catch (err) {
-      console.error("Error fetching polls:", err);
+      // if backend requires auth and returns 401, show friendly popup but don't crash
+      if (err?.response?.status === 401) {
+        console.warn("Unauthorized while fetching polls");
+      } else {
+        console.error("Error fetching polls:", err);
+      }
     }
   };
 
@@ -43,112 +94,168 @@ export default function Home() {
     fetchPolls();
   }, []);
 
+  // -------------------------
+  // Fetch user details (if logged-in)
+  // -------------------------
+  const fetchUserDetails = async () => {
+    try {
+      const res = await API.get("user/");
+      setUserDetails(res.data);
+      if (res.data?.username) localStorage.setItem("username", res.data.username);
+    } catch (err) {
+      // not fatal — user may be unauthenticated
+      console.warn("Could not fetch user details", err);
+    }
+  };
 
-const fetchUserDetails = async () => {
-  try {
-    const res = await API.get("user/");    
-    setUserDetails(res.data);    
-  } catch (err) {
-    console.error("Error fetching user details:", err);
-  }
-};
-
-  useEffect(() => {fetchUserDetails();}, []);
-
-  // Global WS for polls (create/vote/delete notifications)
   useEffect(() => {
-    const ws = new WebSocket(`${wsScheme}://${host}/ws/polls/`);
+    if (isAuthenticated()) fetchUserDetails();
+  }, []);
+
+  // -------------------------
+  // Global WS: poll create/delete/vote notifications
+  // -------------------------
+  useEffect(() => {
+    let ws;
+    try {
+      ws = new WebSocket(`${wsScheme}://${host}/ws/polls/`);
+    } catch (err) {
+      console.warn("Could not open global WS", err);
+      return;
+    }
+
     ws.onopen = () => {
       console.log("Global WS connected");
       setGlobalSocket(ws);
     };
+
     ws.onmessage = (event) => {
       try {
-        const d = JSON.parse(event.data);
-        if (
-          [
-            "vote_update",
-            "poll_update",
-            "poll_created",
-            "poll_deleted",
-          ].includes(d.type || d.message)
-        ) {
+        const raw = JSON.parse(event.data);
+        const typ = raw.type ?? raw.message ?? null;
+        if (["vote_update", "poll_update", "poll_created", "poll_deleted"].includes(typ)) {
           fetchPolls();
         }
-      } catch (e) {
-        console.warn("Invalid global WS message", e);
+
+        // If global socket carries chat messages for a poll_id, add if it matches current poll
+        if (raw.type === "chat_message" && raw.poll_id) {
+          if (selectedPoll && Number(raw.poll_id) === Number(selectedPoll.id)) {
+            setMessages((prev) => [...prev, normalizeMessage(raw)]);
+          }
+        }
+      } catch (err) {
+        console.warn("Invalid global WS message", err);
       }
     };
-    ws.onclose = () => console.log("Global WS closed");
-    ws.onerror = (e) => console.warn("Global WS error", e);
 
-    setGlobalSocket(ws);
-    return () => ws.close();
+    ws.onerror = (e) => {
+      console.warn("Global WS error", e);
+    };
+
+    ws.onclose = () => {
+      console.log("Global WS closed");
+      setGlobalSocket(null);
+    };
+
+    return () => {
+      try {
+        ws.close();
+      } catch {}
+      setGlobalSocket(null);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Chat WS per selectedPoll
+  // -------------------------
+  // Chat WS per selected poll
+  // -------------------------
   useEffect(() => {
+    // cleanup old socket if switching polls
     if (!selectedPoll) {
       setMessages([]);
       if (chatSocket) {
-        chatSocket.close();
+        try {
+          chatSocket.close();
+        } catch {}
         setChatSocket(null);
       }
       return;
     }
 
-    // fetch history from REST (if available)
+    // fetch chat history via REST (serializer already provides username/is_admin)
     const fetchHistory = async () => {
       try {
         const res = await API.get(`chat/messages/${selectedPoll.id}/`);
-        setMessages(res.data || []);
+        const arr = Array.isArray(res.data) ? res.data : [];
+        setMessages(arr.map((m) => normalizeMessage(m)));
       } catch (err) {
-        console.warn(
-          "Could not fetch chat history (maybe auth required?)",
-          err
-        );
+        console.warn("Could not fetch chat history (maybe auth required)", err);
+        setMessages([]); // show empty list but not crash
       }
     };
     fetchHistory();
 
-    const cs = new WebSocket(
-      `${wsScheme}://${host}/ws/chat/${selectedPoll.id}/`
-    );
+    // open per-poll WS
+    let cs;
+    try {
+      cs = new WebSocket(`${wsScheme}://${host}/ws/chat/${selectedPoll.id}/`);
+    } catch (err) {
+      console.warn("Could not open chat WS", err);
+      openPopup("WebSocket connect error for chat. Check backend.");
+      return;
+    }
+
     cs.onopen = () => {
       console.log("Chat WS connected for poll", selectedPoll.id);
       setChatSocket(cs);
     };
+
     cs.onmessage = (event) => {
       try {
-        const d = JSON.parse(event.data);
-        if (d.type === "chat_message") {
-          setMessages((prev) => [...prev, d]);
+        const raw = JSON.parse(event.data);
+        const normalized = normalizeMessage(raw);
+
+        // Only append real chat messages
+        if (normalized.type === "chat_message" && normalized.content?.trim()) {
+          setMessages((prev) => [...prev, normalized]);
         }
-        if (d.type === "vote_update") {
+
+        // If a vote update came via chat socket, refresh polls
+        if (normalized.type === "vote_update") {
           fetchPolls();
         }
       } catch (err) {
         console.warn("Invalid chat WS message", err);
       }
     };
-    cs.onclose = () => console.log("Chat WS closed");
-    cs.onerror = (e) => console.warn("Chat WS error", e);
+
+    cs.onerror = (err) => {
+      console.warn("Chat WS error", err);
+    };
+
+    cs.onclose = () => {
+      console.log("Chat WS closed for poll", selectedPoll.id);
+      setChatSocket(null);
+    };
 
     setChatSocket(cs);
-    return () => cs.close();
+    return () => {
+      try {
+        cs.close();
+      } catch {}
+      setChatSocket(null);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedPoll]);
 
+  // auto-scroll
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const isAuthenticated = () => !!localStorage.getItem("access");
-  const getUsername = () => localStorage.getItem("username") || "Anonymous";
-  
-
-  // Create poll (admins only - backend will validate)
+  // -------------------------
+  // Create Poll (server checks admin)
+  // -------------------------
   const createPoll = async (e) => {
     e.preventDefault();
     if (!isAuthenticated()) {
@@ -163,25 +270,24 @@ const fetchUserDetails = async () => {
       const res = await API.post("polls/", { question, options });
       setQuestion("");
       setOptions(["", ""]);
-      // push to local list quickly
-      if (res.data?.poll) {
-        setPolls((p) => [res.data.poll, ...p]);
-      } else if (res.data?.id) {
-        setPolls((p) => [res.data, ...p]);
-      } else {
-        await fetchPolls();
-      }
-      // notify others
+
+      // add locally or refresh
+      if (res.data?.poll) setPolls((p) => [res.data.poll, ...p]);
+      else if (res.data?.id) setPolls((p) => [res.data, ...p]);
+      else await fetchPolls();
+
       if (globalSocket?.readyState === WebSocket.OPEN) {
         globalSocket.send(JSON.stringify({ type: "poll_update" }));
       }
     } catch (err) {
-      console.error("Error creating poll:", err);
-      const detail = err?.response?.data || err.message;
-      openPopup("Create poll failed: " + JSON.stringify(detail));
+      console.error("Create poll error:", err);
+      openPopup("Create poll failed: " + JSON.stringify(err?.response?.data || err.message));
     }
   };
 
+  // -------------------------
+  // Vote
+  // -------------------------
   const vote = async (optionId) => {
     if (!isAuthenticated()) {
       openPopup("Please login to vote.");
@@ -195,15 +301,16 @@ const fetchUserDetails = async () => {
         globalSocket.send(JSON.stringify({ type: "vote_update" }));
       }
     } catch (err) {
-      console.error("Error voting:", err);
-      openPopup(
-        "Vote failed: " + JSON.stringify(err?.response?.data || err.message)
-      );
+      console.error("Vote error:", err);
+      openPopup("Vote failed: " + JSON.stringify(err?.response?.data || err.message));
     } finally {
       setLoadingVote(null);
     }
   };
 
+  // -------------------------
+  // Delete poll
+  // -------------------------
   const deletePoll = async (pollId) => {
     if (!isAuthenticated()) {
       openPopup("Only admins can delete polls. Please login.");
@@ -222,12 +329,13 @@ const fetchUserDetails = async () => {
       }
     } catch (err) {
       console.error("Delete error:", err);
-      openPopup(
-        "Delete failed: " + JSON.stringify(err?.response?.data || err.message)
-      );
+      openPopup("Delete failed: " + JSON.stringify(err?.response?.data || err.message));
     }
   };
 
+  // -------------------------
+  // Send chat message
+  // -------------------------
   const sendMessage = (e) => {
     e.preventDefault();
     if (!isAuthenticated()) {
@@ -235,22 +343,34 @@ const fetchUserDetails = async () => {
       return;
     }
     if (!chatInput.trim()) return;
+
+    // Backend expects { type: 'chat_message', text: '...', user: '<username>' }
     const payload = {
       type: "chat_message",
       text: chatInput,
       user: getUsername(),
     };
-    // prefer chatSocket
+
     if (chatSocket && chatSocket.readyState === WebSocket.OPEN) {
       chatSocket.send(JSON.stringify(payload));
     } else if (globalSocket && globalSocket.readyState === WebSocket.OPEN) {
-      // fallback: send via global socket (include poll id)
-      globalSocket.send(
-        JSON.stringify({ ...payload, poll_id: selectedPoll?.id })
-      );
+      // fallback if backend accepts global chat (include poll_id)
+      globalSocket.send(JSON.stringify({ ...payload, poll_id: selectedPoll?.id }));
     } else {
       openPopup("No websocket connected for chat.");
     }
+
+    // optimistic UI
+    setMessages((prev) => [
+      ...prev,
+      {
+        type: "chat_message",
+        username: getUsername(),
+        content: chatInput,
+        is_admin: userDetails?.is_admin ?? false,
+        timestamp: new Date().toISOString(),
+      },
+    ]);
     setChatInput("");
   };
 
@@ -268,6 +388,9 @@ const fetchUserDetails = async () => {
     window.location.reload();
   };
 
+  // -------------------------
+  // Render
+  // -------------------------
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col">
       <div className="flex justify-between items-center max-w-7xl mx-auto w-full p-6">
@@ -278,27 +401,18 @@ const fetchUserDetails = async () => {
         <div className="flex items-center gap-4">
           {!isAuthenticated() ? (
             <>
-              <Link to="/login" className="text-blue-600 cursor-pointer">
-                Login
-              </Link>
-              <Link to="/register" className="text-blue-600 cursor-pointer">
-                Register
-              </Link>
+              <Link to="/login" className="text-blue-600 cursor-pointer">Login</Link>
+              <Link to="/register" className="text-blue-600 cursor-pointer">Register</Link>
             </>
           ) : (
             <>
               <span className="text-sm text-gray-700">
                 Hi, {getUsername()}
-                
-                <span className="text-blue-600 font-semibold">{userDetails?.is_admin && (" (Admin Account)")}</span>
+                <span className="text-blue-600 font-semibold">
+                  {userDetails?.is_admin && " (Admin)"}
+                </span>
               </span>
-
-              <button
-                onClick={logout}
-                className="bg-red-500 text-white px-3 cursor-pointer py-1 rounded"
-              >
-                Logout
-              </button>
+              <button onClick={logout} className="bg-red-500 text-white px-3 cursor-pointer py-1 rounded">Logout</button>
             </>
           )}
         </div>
@@ -307,42 +421,17 @@ const fetchUserDetails = async () => {
       <div className="flex flex-col lg:flex-row gap-6 mx-auto w-full max-w-7xl px-6 pb-12">
         {/* Left: Polls & create */}
         <div className="lg:w-2/3 bg-white p-6 rounded shadow">
-          {/* Create Poll (only show if logged-in — admin backend will check) */}
           {isAuthenticated() && (
             <div className="mb-6">
               <h2 className="text-xl font-semibold mb-3">Create New Poll</h2>
               <form onSubmit={createPoll} className="space-y-3">
-                <input
-                  type="text"
-                  placeholder="Poll question"
-                  value={question}
-                  onChange={(e) => setQuestion(e.target.value)}
-                  className="w-full border px-3 py-2 rounded"
-                />
+                <input type="text" placeholder="Poll question" value={question} onChange={(e) => setQuestion(e.target.value)} className="w-full border px-3 py-2 rounded" />
                 {options.map((opt, i) => (
-                  <input
-                    key={i}
-                    type="text"
-                    placeholder={`Option ${i + 1}`}
-                    value={opt}
-                    onChange={(e) => handleOptionChange(i, e.target.value)}
-                    className="w-full border px-3 py-2 rounded"
-                  />
+                  <input key={i} type="text" placeholder={`Option ${i + 1}`} value={opt} onChange={(e) => handleOptionChange(i, e.target.value)} className="w-full border px-3 py-2 rounded" />
                 ))}
                 <div className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={addOption}
-                    className="px-3 py-2 bg-gray-200 cursor-pointer rounded"
-                  >
-                    + Add
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-blue-600 text-white rounded cursor-pointer"
-                  >
-                    Create
-                  </button>
+                  <button type="button" onClick={addOption} className="px-3 py-2 bg-gray-200 cursor-pointer rounded">+ Add</button>
+                  <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded cursor-pointer">Create</button>
                 </div>
               </form>
             </div>
@@ -351,55 +440,23 @@ const fetchUserDetails = async () => {
           <h2 className="text-xl font-semibold mb-3">Available Polls</h2>
           <div className="space-y-4">
             {polls.map((poll) => (
-              <div
-                key={poll.id}
-                className={`p-4 border rounded ${
-                  selectedPoll?.id === poll.id
-                    ? "border-blue-400 bg-blue-50"
-                    : "border-gray-200"
-                }`}
-              >
-                <h3 className="font-semibold mb-2">{poll.question} </h3>
-                <span className="">(Created by {poll.created_by})</span>
-                <div className="text-sm text-gray-500">
-                  (Created at {new Date(poll.created_at).toLocaleString()})
-                </div>
+              <div key={poll.id} className={`p-4 border rounded ${selectedPoll?.id === poll.id ? "border-blue-400 bg-blue-50" : "border-gray-200"}`}>
+                <h3 className="font-semibold mb-2">{poll.question}</h3>
+                <span className="text-sm">(Created by {poll.created_by})</span>
+                <div className="text-xs text-gray-500">(Created at {new Date(poll.created_at).toLocaleString()})</div>
 
-                <div className="space-y-2">
+                <div className="space-y-2 mt-3">
                   {poll.options.map((opt) => (
-                    <button
-                      key={opt.id}
-                      onClick={() => vote(opt.id)}
-                      disabled={loadingVote === opt.id}
-                      className={`w-full px-4 py-2 rounded text-left flex justify-between items-center cursor-pointer ${
-                        loadingVote === opt.id
-                          ? "bg-blue-300"
-                          : "bg-blue-500 hover:bg-blue-600 text-white"
-                      }`}
-                    >
+                    <button key={opt.id} onClick={() => vote(opt.id)} disabled={loadingVote === opt.id} className={`w-full px-4 py-2 rounded text-left flex justify-between items-center cursor-pointer ${loadingVote === opt.id ? "bg-blue-300" : "bg-blue-500 hover:bg-blue-600 text-white"} mb-2`}>
                       <span>{opt.text}</span>
-                      <span className="font-bold bg-white/20 rounded px-2 py-0.5 cursor-pointer">
-                        {opt.votes_count}
-                      </span>
+                      <span className="font-bold bg-white/20 rounded px-2 py-0.5">{opt.votes_count}</span>
                     </button>
                   ))}
                 </div>
 
                 <div className="mt-3 flex gap-2">
-                  <button
-                    onClick={() => setSelectedPoll(poll)}
-                    className="bg-green-500 text-white px-3 py-1 rounded cursor-pointer"
-                  >
-                    Open Chat
-                  </button>
-                  {isAuthenticated() && (
-                    <button
-                      onClick={() => deletePoll(poll.id)}
-                      className="bg-red-500 text-white px-3 py-1 rounded cursor-pointer"
-                    >
-                      Delete
-                    </button>
-                  )}
+                  <button onClick={() => setSelectedPoll(poll)} className="bg-green-500 text-white px-3 py-1 rounded cursor-pointer">Open Chat</button>
+                  {isAuthenticated() && <button onClick={() => deletePoll(poll.id)} className="bg-red-500 text-white px-3 py-1 rounded cursor-pointer">Delete</button>}
                 </div>
               </div>
             ))}
@@ -409,92 +466,48 @@ const fetchUserDetails = async () => {
         {/* Right: Chat & chart */}
         <div className="lg:w-1/3 bg-white p-6 rounded shadow flex flex-col h-[800px]">
           {!selectedPoll ? (
-            <div className="flex-1 flex items-center justify-center text-gray-400">
-              <p>Select a poll to open chat & see live results</p>
-            </div>
+            <div className="flex-1 flex items-center justify-center text-gray-400"><p>Select a poll to open chat & see live results</p></div>
           ) : (
             <>
               <div className="mb-3">
-                <h3 className="text-lg font-semibold">
-                  {selectedPoll.question}
-                </h3>
-                <span className="">(Created by {selectedPoll.created_by})</span>
-                <div className="text-sm text-gray-500">
-                  (Created at 
-                  {new Date(selectedPoll.created_at).toLocaleString()})
-                </div>
+                <h3 className="text-lg font-semibold">{selectedPoll.question}</h3>
+                <span>(Created by {selectedPoll.created_by})</span>
+                <div className="text-sm text-gray-500"> (Created at {new Date(selectedPoll.created_at).toLocaleString()})</div>
               </div>
 
               <div className="flex-1 overflow-y-auto border rounded p-3 mb-3 bg-gray-50">
-                {messages.length === 0 ? (
-                  <p className="text-center text-gray-400 mt-10">
-                    No messages yet.
-                  </p>
+                {messages.filter((m) => m.type === "chat_message" && m.content?.trim()).length === 0 ? (
+                  <p className="text-center text-gray-400 mt-10">No messages yet.</p>
                 ) : (
-                  messages.map((m, i) => (
-                    <div
-                      key={i}
-                      className={`mb-3 flex ${
-                        m.username === getUsername()
-                          ? "justify-start"
-                          : "justify-end"
-                      }`}
-                    >
-                      <div
-                        className={`max-w-xs px-4 py-2 rounded-2xl shadow 
-      ${
-        m.username === getUsername()
-          ? "bg-blue-500 text-white"
-          : "bg-gray-200 text-gray-800"
-      }`}
-                      >
-                        <strong className="block text-xs  mb-1  first-letter:uppercase ">
-                          {m.username}
-                          <span className="">
-                            {m.is_admin ? " (Admin)" : ""}
-                          </span>
-                        </strong>
-                        <span>{m.content}</span>
-                      </div>
-                    </div>
-                  ))
+                  messages
+                    .filter((m) => m.type === "chat_message" && m.content?.trim())
+                    .map((m, i) => {
+                      const isMine = m.username === getUsername();
+                      return (
+                        <div key={i} className={`mb-3 flex ${isMine ? "justify-start" : "justify-end"}`}>
+                          <div className={`max-w-xs px-4 py-2 rounded-2xl shadow ${isMine ? "bg-blue-500 text-white" : "bg-gray-200 text-gray-800"}`}>
+                            <strong className="block text-xs mb-1">{m.username} {m.is_admin ? "(Admin)" : ""}</strong>
+                            <span>{m.content}</span>
+                          </div>
+                        </div>
+                      );
+                    })
                 )}
                 <div ref={chatEndRef} />
               </div>
 
               <form onSubmit={sendMessage} className="flex gap-2 mb-4">
-                <input
-                  value={chatInput}
-                  onChange={(e) => setChatInput(e.target.value)}
-                  placeholder={
-                    isAuthenticated()
-                      ? "Type a message..."
-                      : "Login to send messages"
-                  }
-                  className="flex-1 border rounded px-3 py-2"
-                />
-                <button
-                  type="submit"
-                  className="bg-blue-600 text-white px-4 py-2 cursor-pointer rounded"
-                  disabled={!isAuthenticated()}
-                >
-                  Send
-                </button>
+                <input value={chatInput} onChange={(e) => setChatInput(e.target.value)} placeholder={isAuthenticated() ? "Type a message..." : "Login to send messages"} className="flex-1 border rounded px-3 py-2" />
+                <button type="submit" className="bg-blue-600 text-white px-4 py-2 cursor-pointer rounded" disabled={!isAuthenticated()}>Send</button>
               </form>
 
-              <div>
-                <VoteChart poll={selectedPoll} />
-              </div>
+              <div><VoteChart poll={selectedPoll} /></div>
             </>
           )}
         </div>
       </div>
-      {showPopup && (
-        <PermissionPopup
-          message={popupMessage}
-          onClose={() => setShowPopup(false)}
-        />
-      )}
+
+      {showPopup && <PermissionPopup message={popupMessage} onClose={() => setShowPopup(false)} />}
     </div>
   );
 }
