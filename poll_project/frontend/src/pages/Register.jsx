@@ -13,7 +13,7 @@ export default function Register() {
   });
 
   const [msg, setMsg] = useState("");
-  const [loading, setLoading] = useState(false); // ✅ loading state
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -22,7 +22,11 @@ export default function Register() {
   };
 
   const pickRole = (isAdmin) => {
-    setForm({ ...form, is_admin: isAdmin, is_regular: !isAdmin });
+    setForm({
+      ...form,
+      is_admin: isAdmin,
+      is_regular: !isAdmin,
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -34,7 +38,7 @@ export default function Register() {
       return;
     }
 
-    setLoading(true); // ✅ start loading animation
+    setLoading(true);
 
     try {
       await API.post("register/", {
@@ -51,18 +55,19 @@ export default function Register() {
     } catch (err) {
       const detail = err?.response?.data || err.message;
       setMsg(`Registration failed: ${JSON.stringify(detail)}`);
-      setLoading(false); // ✅ stop loading if error
+      setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6 relative">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-md bg-white p-6 rounded-lg shadow z-10"
+        className="w-full max-w-md bg-white p-6 rounded-lg shadow"
       >
         <h2 className="text-2xl font-bold mb-4 text-center">Register</h2>
 
+        {/* Username */}
         <input
           name="username"
           placeholder="Username"
@@ -72,6 +77,7 @@ export default function Register() {
           className="w-full border px-3 py-2 rounded mb-3 focus:ring-2 focus:ring-blue-500"
         />
 
+        {/* Email */}
         <input
           name="email"
           type="email"
@@ -82,6 +88,7 @@ export default function Register() {
           className="w-full border px-3 py-2 rounded mb-3 focus:ring-2 focus:ring-blue-500"
         />
 
+        {/* Password */}
         <input
           name="password"
           type="password"
@@ -92,6 +99,7 @@ export default function Register() {
           className="w-full border px-3 py-2 rounded mb-3 focus:ring-2 focus:ring-blue-500"
         />
 
+        {/* Confirm Password */}
         <input
           name="password2"
           type="password"
@@ -102,12 +110,12 @@ export default function Register() {
           className="w-full border px-3 py-2 rounded mb-3 focus:ring-2 focus:ring-blue-500"
         />
 
-        {/* Role selection */}
+        {/* ✅ Role Selection Buttons */}
         <div className="flex gap-4 mb-4">
           <button
             type="button"
             onClick={() => pickRole(true)}
-            className={`flex-1 py-2 rounded ${
+            className={`flex-1 py-2 rounded transition ${
               form.is_admin ? "bg-blue-600 text-white" : "bg-gray-200"
             }`}
           >
@@ -117,7 +125,7 @@ export default function Register() {
           <button
             type="button"
             onClick={() => pickRole(false)}
-            className={`flex-1 py-2 rounded ${
+            className={`flex-1 py-2 rounded transition ${
               form.is_regular ? "bg-blue-600 text-white" : "bg-gray-200"
             }`}
           >
@@ -125,12 +133,14 @@ export default function Register() {
           </button>
         </div>
 
+        {/* Error or success message */}
         {msg && <p className="mb-2 text-sm text-red-500">{msg}</p>}
 
+        {/* ✅ Submit Button (fixed disappearing bug) */}
         <button
           type="submit"
           disabled={loading}
-          className={`w-full py-2 rounded text-white ${
+          className={`w-full py-2 rounded cursor-pointer text-white ${
             loading
               ? "bg-blue-400 cursor-not-allowed"
               : "bg-blue-600 hover:bg-blue-700"
@@ -165,13 +175,6 @@ export default function Register() {
           )}
         </button>
       </form>
-
-      {/* ✅ Optional full-screen overlay animation */}
-      {loading && (
-        <div className="absolute inset-0 bg-gray-800 bg-opacity-40 flex justify-center items-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600"></div>
-        </div>
-      )}
     </div>
   );
 }

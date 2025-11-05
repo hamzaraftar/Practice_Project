@@ -1,7 +1,8 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, use } from "react";
 import API from "../api/auth";
 import VoteChart from "../components/VoteChart";
 import PermissionPopup from "../components/PermissionPopup";
+import { Link } from "react-router-dom";
 
 export default function Home() {
   const [polls, setPolls] = useState([]);
@@ -16,6 +17,7 @@ export default function Home() {
   const chatEndRef = useRef(null);
   const [showPopup, setShowPopup] = useState(false);
   const [popupMessage, setPopupMessage] = useState("");
+  const [userDetails, setUserDetails] = useState(null);
 
   const openPopup = (msg) => {
     setPopupMessage(msg);
@@ -40,6 +42,18 @@ export default function Home() {
   useEffect(() => {
     fetchPolls();
   }, []);
+
+
+const fetchUserDetails = async () => {
+  try {
+    const res = await API.get("user/");    
+    setUserDetails(res.data);    
+  } catch (err) {
+    console.error("Error fetching user details:", err);
+  }
+};
+
+  useEffect(() => {fetchUserDetails();}, []);
 
   // Global WS for polls (create/vote/delete notifications)
   useEffect(() => {
@@ -132,6 +146,7 @@ export default function Home() {
 
   const isAuthenticated = () => !!localStorage.getItem("access");
   const getUsername = () => localStorage.getItem("username") || "Anonymous";
+  
 
   // Create poll (admins only - backend will validate)
   const createPoll = async (e) => {
@@ -263,16 +278,21 @@ export default function Home() {
         <div className="flex items-center gap-4">
           {!isAuthenticated() ? (
             <>
-              <a href="/login" className="text-blue-600 cursor-pointer">
+              <Link to="/login" className="text-blue-600 cursor-pointer">
                 Login
-              </a>
-              <a href="/register" className="text-blue-600 cursor-pointer">
+              </Link>
+              <Link to="/register" className="text-blue-600 cursor-pointer">
                 Register
-              </a>
+              </Link>
             </>
           ) : (
             <>
-              <span className="text-sm text-gray-700">Hi, {getUsername()}</span>
+              <span className="text-sm text-gray-700">
+                Hi, {getUsername()}
+                
+                <span className="text-blue-600 font-semibold">{userDetails?.is_admin && (" (Admin Account)")}</span>
+              </span>
+
               <button
                 onClick={logout}
                 className="bg-red-500 text-white px-3 cursor-pointer py-1 rounded"
@@ -341,7 +361,9 @@ export default function Home() {
               >
                 <h3 className="font-semibold mb-2">{poll.question} </h3>
                 <span className="">(Created by {poll.created_by})</span>
-                <div className="text-sm text-gray-500">(Created at {new Date(poll.created_at).toLocaleString()})</div>
+                <div className="text-sm text-gray-500">
+                  (Created at {new Date(poll.created_at).toLocaleString()})
+                </div>
 
                 <div className="space-y-2">
                   {poll.options.map((opt) => (
@@ -385,7 +407,7 @@ export default function Home() {
         </div>
 
         {/* Right: Chat & chart */}
-        <div className="lg:w-1/3 bg-white p-6 rounded shadow flex flex-col h-[700px]">
+        <div className="lg:w-1/3 bg-white p-6 rounded shadow flex flex-col h-[800px]">
           {!selectedPoll ? (
             <div className="flex-1 flex items-center justify-center text-gray-400">
               <p>Select a poll to open chat & see live results</p>
@@ -396,9 +418,11 @@ export default function Home() {
                 <h3 className="text-lg font-semibold">
                   {selectedPoll.question}
                 </h3>
-                <p className="text-sm text-gray-500">
-                  Poll ID: {selectedPoll.id}
-                </p>
+                <span className="">(Created by {selectedPoll.created_by})</span>
+                <div className="text-sm text-gray-500">
+                  (Created at 
+                  {new Date(selectedPoll.created_at).toLocaleString()})
+                </div>
               </div>
 
               <div className="flex-1 overflow-y-auto border rounded p-3 mb-3 bg-gray-50">

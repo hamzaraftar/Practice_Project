@@ -22,6 +22,7 @@ export default function Login() {
       localStorage.setItem("access", res.data.access);
       localStorage.setItem("refresh", res.data.refresh);
       localStorage.setItem("username", credentials.username);
+      
 
       navigate("/");
       window.location.reload();
@@ -62,7 +63,7 @@ export default function Login() {
         <button
           type="submit"
           disabled={loading}
-          className={`w-full py-2 rounded text-white ${
+          className={`w-full py-2 rounded text-white cursor-pointer ${
             loading ? "bg-blue-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"
           }`}
         >
