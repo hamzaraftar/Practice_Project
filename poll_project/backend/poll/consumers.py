@@ -4,14 +4,16 @@ from channels.db import database_sync_to_async
 from .models import CustomUser, Poll, ChatMessage
 from .serializers import ChatMessageSerializer
 
-#  Global consumer (poll CRUD + vote updates)
+
+#  GLOBAL POLL CONSUMER (create/delete poll + vote update)
+
 class GlobalPollConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         await self.channel_layer.group_add("polls_global", self.channel_name)
-        await self.accept()        
+        await self.accept()
 
     async def disconnect(self, close_code):
-        await self.channel_layer.group_discard("polls_global", self.channel_name)        
+        await self.channel_layer.group_discard("polls_global", self.channel_name)
 
     async def receive(self, text_data):
         data = json.loads(text_data)
@@ -28,69 +30,79 @@ class GlobalPollConsumer(AsyncWebsocketConsumer):
             "type": event["msg_type"]
         }))
 
-# Poll Consumer (Chat + Vote)
+
+#  PER-POLL CONSUMER (chat + vote)
+
 class PollConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.poll_id = self.scope["url_route"]["kwargs"]["poll_id"]
         self.room_group_name = f"poll_{self.poll_id}"
 
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
-        await self.accept()        
+        await self.accept()
 
     async def disconnect(self, close_code):
         await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
-       
 
-    #  Handle Messages From WebSocket
-
+    #  WEB SOCKET RECEIVE
     async def receive(self, text_data):
         data = json.loads(text_data)
         msg_type = data.get("type")
 
-        # VOTE UPDATE
+        # Vote
         if msg_type == "vote_update":
             await self.channel_layer.group_send(
                 self.room_group_name,
                 {"type": "vote_broadcast"}
             )
+            return
 
-        # CHAT MESSAGE
-        elif msg_type == "chat_message":
-            # Frontend sends: { user: {username, is_admin, email}, text }
-            user_data = data.get("user", {})
-            username = user_data.get("username")
+        #  Chat Message
+        if msg_type == "chat_message":
+            raw_user = data.get("user", None)
+
+            #  Fix: allow both string and dict
+            if isinstance(raw_user, dict):
+                username = raw_user.get("username", None)
+            elif isinstance(raw_user, str):
+                username = raw_user
+            else:
+                username = None
 
             text = data.get("text", "").strip()
+
             if not username or not text:
-                return
+                return  # Ignore invalid messages
 
-            #  Save message & get full serialized data
+            #  Save message
             saved_msg = await self.save_message(username, text)
-            serialized_msg = ChatMessageSerializer(saved_msg).data
 
-            #  Broadcast FULL message (same structure as REST API)
+            #  Serialize message (same as REST API)
+            serialized = ChatMessageSerializer(saved_msg).data
+
+            #  Broadcast full message
             await self.channel_layer.group_send(
                 self.room_group_name,
                 {
                     "type": "chat_broadcast",
-                    "message": serialized_msg
+                    "message": serialized
                 }
             )
 
-    #  Send message to WebSocket
+    #  SEND CHAT
     async def chat_broadcast(self, event):
         await self.send(text_data=json.dumps({
             "type": "chat_message",
-            **event["message"]   # send id, username, content, is_admin, timestamp
+            **event["message"]
         }))
-
-    #  Send vote updates
+   
+    #  SEND VOTE UPDATE 
     async def vote_broadcast(self, event):
         await self.send(text_data=json.dumps({
             "type": "vote_update"
         }))
 
-    #  Save message & return created instance
+    #  SAVE MESSAGE    
     @database_sync_to_async
     def save_message(self, username, text):
         poll = Poll.objects.get(id=self.poll_id)
