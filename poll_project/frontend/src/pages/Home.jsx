@@ -34,7 +34,6 @@ export default function Home() {
       ? "localhost:8000"
       : window.location.host;
 
-
   const isAuthenticated = () => !!localStorage.getItem("access");
   const getUsername = () =>
     userDetails?.username || localStorage.getItem("username") || "Anonymous";
@@ -58,14 +57,13 @@ export default function Home() {
     const timestamp = raw.timestamp ?? raw.time ?? null;
     const type = raw.type ?? "chat_message";
 
-   
     return {
       type,
       username,
       content,
       is_admin,
       timestamp,
-      
+
       __raw: raw,
     };
   };
@@ -75,7 +73,7 @@ export default function Home() {
     try {
       const res = await API.get("polls/");
       setPolls(res.data);
-    } catch (err) {      
+    } catch (err) {
       if (err?.response?.status === 401) {
         console.warn("Unauthorized while fetching polls");
       } else {
@@ -93,7 +91,8 @@ export default function Home() {
     try {
       const res = await API.get("user/");
       setUserDetails(res.data);
-      if (res.data?.username) localStorage.setItem("username", res.data.username);
+      if (res.data?.username)
+        localStorage.setItem("username", res.data.username);
     } catch (err) {
       console.warn("Could not fetch user details", err);
     }
@@ -122,7 +121,14 @@ export default function Home() {
       try {
         const raw = JSON.parse(event.data);
         const typ = raw.type ?? raw.message ?? null;
-        if (["vote_update", "poll_update", "poll_created", "poll_deleted"].includes(typ)) {
+        if (
+          [
+            "vote_update",
+            "poll_update",
+            "poll_created",
+            "poll_deleted",
+          ].includes(typ)
+        ) {
           fetchPolls();
         }
 
@@ -152,12 +158,9 @@ export default function Home() {
       } catch {}
       setGlobalSocket(null);
     };
-    
   }, []);
 
-
   // Chat WS per selected poll
-
   useEffect(() => {
     if (!selectedPoll) {
       setMessages([]);
@@ -170,7 +173,7 @@ export default function Home() {
       return;
     }
 
-    // fetch chat 
+    // fetch chat
     const fetchHistory = async () => {
       try {
         const res = await API.get(`chat/messages/${selectedPoll.id}/`);
@@ -232,7 +235,7 @@ export default function Home() {
         cs.close();
       } catch {}
       setChatSocket(null);
-    };    
+    };
   }, [selectedPoll]);
 
   // auto-scroll
@@ -266,7 +269,10 @@ export default function Home() {
       }
     } catch (err) {
       console.error("Create poll error:", err);
-      openPopup("Create poll failed: " + JSON.stringify(err?.response?.data || err.message));
+      openPopup(
+        "Create poll failed: " +
+          JSON.stringify(err?.response?.data || err.message)
+      );
     }
   };
 
@@ -285,7 +291,9 @@ export default function Home() {
       }
     } catch (err) {
       console.error("Vote error:", err);
-      openPopup("Vote failed: " + JSON.stringify(err?.response?.data || err.message));
+      openPopup(
+        "Vote failed: " + JSON.stringify(err?.response?.data || err.message)
+      );
     } finally {
       setLoadingVote(null);
     }
@@ -310,7 +318,9 @@ export default function Home() {
       }
     } catch (err) {
       console.error("Delete error:", err);
-      openPopup("Delete failed: " + JSON.stringify(err?.response?.data || err.message));
+      openPopup(
+        "Delete failed: " + JSON.stringify(err?.response?.data || err.message)
+      );
     }
   };
 
@@ -333,7 +343,9 @@ export default function Home() {
     if (chatSocket && chatSocket.readyState === WebSocket.OPEN) {
       chatSocket.send(JSON.stringify(payload));
     } else if (globalSocket && globalSocket.readyState === WebSocket.OPEN) {
-        globalSocket.send(JSON.stringify({ ...payload, poll_id: selectedPoll?.id }));
+      globalSocket.send(
+        JSON.stringify({ ...payload, poll_id: selectedPoll?.id })
+      );
     } else {
       openPopup("No websocket connected for chat.");
     }
@@ -367,122 +379,381 @@ export default function Home() {
 
   // Render
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col">
-      <div className="flex justify-between items-center max-w-7xl mx-auto w-full p-6">
-        <h1 className="text-3xl font-bold text-gray-800">
-          <span className="text-blue-600">Live Polling</span> & Chat
-        </h1>
-
-        <div className="flex items-center gap-4">
-          {!isAuthenticated() ? (
-            <>
-              <Link to="/login" className="text-blue-600 cursor-pointer">Login</Link>
-              <Link to="/register" className="text-blue-600 cursor-pointer">Register</Link>
-            </>
-          ) : (
-            <>
-              <span className="text-sm text-gray-700">
-                Hi, {getUsername()}
-                <span className="text-blue-600 font-semibold">
-                  {userDetails?.is_admin && " (Admin)"}
-                </span>
-              </span>
-              <button onClick={logout} className="bg-red-500 text-white px-3 cursor-pointer py-1 rounded">Logout</button>
-            </>
-          )}
-        </div>
-      </div>
-
-      <div className="flex flex-col lg:flex-row gap-6 mx-auto w-full max-w-7xl px-6 pb-12">
-        {/* Left: Polls & create */}
-        <div className="lg:w-2/3 bg-white p-6 rounded shadow">
-          {isAuthenticated() && (
-            <div className="mb-6">
-              <h2 className="text-xl font-semibold mb-3">Create New Poll</h2>
-              <form onSubmit={createPoll} className="space-y-3">
-                <input type="text" placeholder="Poll question" value={question} onChange={(e) => setQuestion(e.target.value)} className="w-full border px-3 py-2 rounded" />
-                {options.map((opt, i) => (
-                  <input key={i} type="text" placeholder={`Option ${i + 1}`} value={opt} onChange={(e) => handleOptionChange(i, e.target.value)} className="w-full border px-3 py-2 rounded" />
-                ))}
-                <div className="flex gap-3">
-                  <button type="button" onClick={addOption} className="px-3 py-2 bg-gray-200 cursor-pointer rounded">+ Add</button>
-                  <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded cursor-pointer">Create</button>
-                </div>
-              </form>
+    <div className="min-h-screen bg-linear-to-br from-slate-50 to-slate-100 flex flex-col">
+      {/* Header */}
+      <header className="bg-white shadow-sm border-b border-slate-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center">
+              <h1 className="text-2xl font-bold bg-linear-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                Live Polling & Chat
+              </h1>
             </div>
-          )}
 
-          <h2 className="text-xl font-semibold mb-3">Available Polls</h2>
-          <div className="space-y-4">
-            {polls.map((poll) => (
-              <div key={poll.id} className={`p-4 border rounded ${selectedPoll?.id === poll.id ? "border-blue-400 bg-blue-50" : "border-gray-200"}`}>
-                <h3 className="font-semibold mb-2">{poll.question}</h3>
-                <span className="text-sm">(Created by {poll.created_by})</span>
-                <div className="text-xs text-gray-500">(Created at {new Date(poll.created_at).toLocaleString()})</div>
-
-                <div className="space-y-2 mt-3">
-                  {poll.options.map((opt) => (
-                    <button key={opt.id} onClick={() => vote(opt.id)} disabled={loadingVote === opt.id} className={`w-full px-4 py-2 rounded text-left flex justify-between items-center cursor-pointer ${loadingVote === opt.id ? "bg-blue-300" : "bg-blue-500 hover:bg-blue-600 text-white"} mb-2`}>
-                      <span>{opt.text}</span>
-                      <span className="font-bold bg-white/20 rounded px-2 py-0.5">{opt.votes_count}</span>
-                    </button>
-                  ))}
-                </div>
-
-                <div className="mt-3 flex gap-2">
-                  <button onClick={() => setSelectedPoll(poll)} className="bg-green-500 text-white px-3 py-1 rounded cursor-pointer">Open Chat</button>
-                  {isAuthenticated() && <button onClick={() => deletePoll(poll.id)} className="bg-red-500 text-white px-3 py-1 rounded cursor-pointer">Delete</button>}
-                </div>
-              </div>
-            ))}
+            <div className="flex items-center space-x-4">
+              {!isAuthenticated() ? (
+                <>
+                  <Link
+                    to="/login"
+                    className="text-slate-700 hover:text-blue-600 font-medium transition-colors duration-200"
+                  >
+                    Login
+                  </Link>
+                  <Link
+                    to="/register"
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200 shadow-sm"
+                  >
+                    Register
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center space-x-3">
+                    <div className="w-8 h-8 bg-linear-to-r from-blue-500 to-indigo-500 rounded-full flex items-center justify-center text-white text-sm font-medium">
+                      {getUsername().charAt(0).toUpperCase()}
+                    </div>
+                    <div className="text-sm">
+                      <div className="font-medium text-slate-800">
+                        Hi, {getUsername()}
+                      </div>
+                      {userDetails?.is_admin && (
+                        <div className="text-xs text-blue-600 font-semibold">
+                          Admin
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <button
+                    onClick={logout}
+                    className="bg-slate-100 cursor-pointer hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg font-medium transition-colors duration-200"
+                  >
+                    Logout
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </div>
+      </header>
 
-        {/* Right: Chat & chart */}
-        <div className="lg:w-1/3 bg-white p-6 rounded shadow flex flex-col h-[800px]">
-          {!selectedPoll ? (
-            <div className="flex-1 flex items-center justify-center text-gray-400"><p>Select a poll to open chat & see live results</p></div>
-          ) : (
-            <>
-              <div className="mb-3">
-                <h3 className="text-lg font-semibold">{selectedPoll.question}</h3>
-                <span>(Created by {selectedPoll.created_by})</span>
-                <div className="text-sm text-gray-500"> (Created at {new Date(selectedPoll.created_at).toLocaleString()})</div>
+      {/* Main Content */}
+      <main className="flex-1 py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Left: Polls & Create Poll */}
+            <div className="lg:col-span-2 space-y-8">
+              {/* Create Poll Card */}
+              {isAuthenticated() && (
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                  <h2 className="text-xl font-semibold text-slate-800 mb-4">
+                    Create New Poll
+                  </h2>
+                  <form onSubmit={createPoll} className="space-y-4">
+                    <div>
+                      <input
+                        type="text"
+                        placeholder="Enter your poll question..."
+                        value={question}
+                        onChange={(e) => setQuestion(e.target.value)}
+                        className="w-full border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                      />
+                    </div>
+
+                    <div className="space-y-3">
+                      {options.map((opt, i) => (
+                        <input
+                          key={i}
+                          type="text"
+                          placeholder={`Option ${i + 1}`}
+                          value={opt}
+                          onChange={(e) =>
+                            handleOptionChange(i, e.target.value)
+                          }
+                          className="w-full border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                        />
+                      ))}
+                    </div>
+
+                    <div className="flex gap-3">
+                      <button
+                        type="button"
+                        onClick={addOption}
+                        className="px-4 cursor-pointer py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors duration-200 font-medium"
+                      >
+                        + Add Option
+                      </button>
+                      <button
+                        type="submit"
+                        className="px-6 py-2 cursor-pointer bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors duration-200 font-medium shadow-sm"
+                      >
+                        Create Poll
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
+              {/* Polls List */}
+              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-semibold text-slate-800">
+                    Available Polls
+                  </h2>
+                  <span className="bg-slate-100 text-slate-600 text-sm px-3 py-1 rounded-full font-medium">
+                    {polls.length} polls
+                  </span>
+                </div>
+
+                <div className="space-y-4">
+                  {polls.map((poll) => (
+                    <div
+                      key={poll.id}
+                      className={`border rounded-xl p-5 transition-all duration-200 ${
+                        selectedPoll?.id === poll.id
+                          ? "border-blue-300 bg-blue-50 shadow-sm"
+                          : "border-slate-200 hover:border-slate-300 hover:shadow-sm"
+                      }`}
+                    >
+                      <div className="flex justify-between items-start mb-3">
+                        <h3 className="font-semibold text-slate-800 text-lg">
+                          {poll.question}
+                        </h3>
+                        {selectedPoll?.id === poll.id && (
+                          <span className="bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded-full font-medium">
+                            Active
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="text-sm text-slate-600 mb-4">
+                        <span>By {poll.created_by}</span>
+                        <span className="mx-2">•</span>
+                        <span>
+                          {new Date(poll.created_at).toLocaleString()}
+                        </span>
+                      </div>
+
+                      <div className="space-y-2 mb-4">
+                        {poll.options.map((opt) => (
+                          <button
+                            key={opt.id}
+                            onClick={() => vote(opt.id)}
+                            disabled={loadingVote === opt.id}
+                            className={`w-full px-4 py-3 rounded-lg cursor-pointer text-left flex justify-between items-center transition-all duration-200 ${
+                              loadingVote === opt.id
+                                ? "bg-blue-300 cursor-not-allowed"
+                                : "bg-linear-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white shadow-sm"
+                            }`}
+                          >
+                            <span className="font-medium">{opt.text}</span>
+                            <span className="bg-white/20 rounded-full px-3 py-1 text-sm font-bold min-w-8 text-center">
+                              {opt.votes_count}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="flex gap-2 pt-3 border-t border-slate-100">
+                        <button
+                          onClick={() => setSelectedPoll(poll)}
+                          className="flex-1 bg-green-600 cursor-pointer hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200 text-center"
+                        >
+                          Open Chat
+                        </button>
+                        {isAuthenticated() && (
+                          <button
+                            onClick={() => deletePoll(poll.id)}
+                            className="px-4 py-2 cursor-pointer bg-red-100 hover:bg-red-200 text-red-700 rounded-lg font-medium transition-colors duration-200"
+                          >
+                            Delete
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
+            </div>
 
-              <div className="flex-1 overflow-y-auto border rounded p-3 mb-3 bg-gray-50">
-                {messages.filter((m) => m.type === "chat_message" && m.content?.trim()).length === 0 ? (
-                  <p className="text-center text-gray-400 mt-10">No messages yet.</p>
+            {/* Right: Chat & Chart */}
+            <div className="lg:col-span-1">
+              <div className="bg-white rounded-xl shadow-sm border border-slate-200 h-[800px] flex flex-col">
+                {!selectedPoll ? (
+                  <div className="flex-1 flex flex-col items-center justify-center text-slate-400 p-8">
+                    <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+                      <svg
+                        className="w-8 h-8"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                        />
+                      </svg>
+                    </div>
+                    <p className="text-center text-slate-500 font-medium">
+                      Select a poll to open chat and see live results
+                    </p>
+                  </div>
                 ) : (
-                  messages
-                    .filter((m) => m.type === "chat_message" && m.content?.trim())
-                    .map((m, i) => {
-                      const isMine = m.username === getUsername();
-                      return (
-                        <div key={i} className={`mb-3 flex ${isMine ? "justify-start" : "justify-end"}`}>
-                          <div className={`max-w-xs px-4 py-2 rounded-2xl shadow ${isMine ? "bg-blue-500 text-white" : "bg-gray-200 text-gray-800"}`}>
-                            <strong className="block text-xs mb-1">{m.username} {m.is_admin ? "(Admin)" : ""}</strong>
-                            <span>{m.content}</span>
-                          </div>
+                  <>
+                    {/* Chat Header */}
+                    <div className="p-6 border-b border-slate-200">
+                      <div className="flex justify-between items-start mb-2">
+                        <h3 className="text-lg font-semibold text-slate-800">
+                          {selectedPoll.question}
+                        </h3>
+                        <button
+                          onClick={() => setSelectedPoll(null)}
+                          className="text-slate-400  hover:text-slate-600 transition-colors duration-200 cursor-pointer"
+                        >
+                          <svg
+                            className="w-5 h-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M6 18L18 6M6 6l12 12"
+                            />
+                          </svg>
+                        </button>
+                      </div>
+                      <div className="text-sm text-slate-600">
+                        <span>By {selectedPoll.created_by}</span>
+                        <span className="mx-2">•</span>
+                        <span>
+                          {new Date(selectedPoll.created_at).toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Chat Messages */}
+                    <div className="flex-1 overflow-y-auto p-4 bg-slate-50">
+                      {messages.filter(
+                        (m) => m.type === "chat_message" && m.content?.trim()
+                      ).length === 0 ? (
+                        <div className="text-center text-slate-400 mt-10">
+                          <svg
+                            className="w-12 h-12 mx-auto mb-3 opacity-50"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                            />
+                          </svg>
+                          <p>No messages yet. Start the conversation!</p>
                         </div>
-                      );
-                    })
+                      ) : (
+                        messages
+                          .filter(
+                            (m) =>
+                              m.type === "chat_message" && m.content?.trim()
+                          )
+                          .map((m, i) => {
+                            const isMine = m.username === getUsername();
+                            return (
+                              <div
+                                key={i}
+                                className={`mb-4 flex ${
+                                  isMine ? "justify-end" : "justify-start"
+                                }`}
+                              >
+                                <div
+                                  className={`max-w-xs lg:max-w-md px-4 py-3 rounded-2xl ${
+                                    isMine
+                                      ? "bg-linear-to-r from-blue-500 to-indigo-500 text-white rounded-br-none"
+                                      : "bg-white border border-slate-200 text-slate-800 rounded-bl-none shadow-sm"
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <strong
+                                      className={`text-xs font-semibold ${
+                                        isMine
+                                          ? "text-blue-100"
+                                          : "text-slate-600"
+                                      }`}
+                                    >
+                                      {m.username}
+                                    </strong>
+                                    {m.is_admin && (
+                                      <span
+                                        className={`text-xs px-1.5 py-0.5 rounded ${
+                                          isMine
+                                            ? "bg-blue-400 text-white"
+                                            : "bg-amber-100 text-amber-700"
+                                        }`}
+                                      >
+                                        Admin
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-sm">{m.content}</p>
+                                </div>
+                              </div>
+                            );
+                          })
+                      )}
+                      <div ref={chatEndRef} />
+                    </div>
+
+                    {/* Chat Input */}
+                    <form
+                      onSubmit={sendMessage}
+                      className="p-4 border-t border-slate-200"
+                    >
+                      <div className="flex gap-2">
+                        <input
+                          value={chatInput}
+                          onChange={(e) => setChatInput(e.target.value)}
+                          placeholder={
+                            isAuthenticated()
+                              ? "Type your message..."
+                              : "Please login to send messages"
+                          }
+                          className="flex-1 border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                          disabled={!isAuthenticated()}
+                        />
+                        <button
+                          type="submit"
+                          className="bg-blue-600  hover:bg-blue-700 text-white px-6 py-3 cursor-pointer rounded-lg font-medium transition-colors duration-200 shadow-sm disabled:bg-slate-300 disabled:cursor-not-allowed"
+                          disabled={!isAuthenticated()}
+                        >
+                          Send
+                        </button>
+                      </div>
+                    </form>
+
+                    {/* Vote Chart */}
+                    <div className="p-4 border-t border-slate-200">
+                      <VoteChart poll={selectedPoll} />
+                    </div>
+                  </>
                 )}
-                <div ref={chatEndRef} />
               </div>
-
-              <form onSubmit={sendMessage} className="flex gap-2 mb-4">
-                <input value={chatInput} onChange={(e) => setChatInput(e.target.value)} placeholder={isAuthenticated() ? "Type a message..." : "Login to send messages"} className="flex-1 border rounded px-3 py-2" />
-                <button type="submit" className="bg-blue-600 text-white px-4 py-2 cursor-pointer rounded" disabled={!isAuthenticated()}>Send</button>
-              </form>
-
-              <div><VoteChart poll={selectedPoll} /></div>
-            </>
-          )}
+            </div>
+          </div>
         </div>
-      </div>
+      </main>
 
-      {showPopup && <PermissionPopup message={popupMessage} onClose={() => setShowPopup(false)} />}
+      {showPopup && (
+        <PermissionPopup
+          message={popupMessage}
+          onClose={() => setShowPopup(false)}
+        />
+      )}
     </div>
   );
 }
